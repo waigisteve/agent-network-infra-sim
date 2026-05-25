@@ -4,6 +4,14 @@
 
 ```bash
 cp .env.example .env
+python - <<'PY'
+from pathlib import Path
+path = Path(".env")
+text = path.read_text()
+text = text.replace("change-this-local-password", "set-a-local-password")
+text = text.replace("replace-with-a-long-random-secret", "set-a-long-random-local-secret")
+path.write_text(text)
+PY
 make up
 ```
 
@@ -33,4 +41,3 @@ uvicorn backend.app.main:app --reload
 ```
 
 Kafka is disabled by default outside Docker. Events are still stored in the `event_log` table.
-

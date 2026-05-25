@@ -17,6 +17,7 @@ It includes:
 
 ```bash
 cp .env.example .env
+# Edit .env and replace placeholder values before starting the stack.
 make up
 ```
 
@@ -45,4 +46,3 @@ pytest -q
 - [Development](docs/development.md)
 - [Architecture](docs/architecture.md)
 - [API](docs/api.md)
-

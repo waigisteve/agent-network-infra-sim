@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./agent_network.db"
     kafka_bootstrap_servers: str = "localhost:9092"
     kafka_enabled: bool = False
-    jwt_secret_key: str = "dev-change-me"
+    jwt_secret_key: str = "local-dev-only-not-a-production-secret"
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = 480
     cors_origins: str = "http://127.0.0.1:5173,http://localhost:5173"
@@ -18,4 +18,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-

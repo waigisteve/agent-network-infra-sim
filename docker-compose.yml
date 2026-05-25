@@ -2,15 +2,15 @@ services:
   postgres:
     image: postgres:16
     environment:
-      POSTGRES_DB: agent_network
-      POSTGRES_USER: agent
-      POSTGRES_PASSWORD: agent_password
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U agent -d agent_network"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -44,7 +44,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    env_file: .env.example
+    env_file: .env
     ports:
       - "8000:8000"
     depends_on:
@@ -60,7 +60,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    env_file: .env.example
+    env_file: .env
     command: python -m backend.app.worker
     depends_on:
       - api
@@ -85,4 +85,3 @@ services:
 
 volumes:
   postgres-data:
-
