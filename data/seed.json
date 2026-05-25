@@ -1,0 +1,53 @@
+{
+  "field_agents": [
+    {"id": "fa_yoram", "name": "Yoram Jarju", "region": "North Bank", "phone": "+2207001001"},
+    {"id": "fa_saina", "name": "Saina Saidy", "region": "Banjul", "phone": "+2207001002"},
+    {"id": "fa_isatou", "name": "Isatou Sanyang", "region": "Kanifing", "phone": "+2207001003"},
+    {"id": "fa_omar", "name": "Omar Laye", "region": "West Coast", "phone": "+2207001004"},
+    {"id": "fa_neema", "name": "Neema Diallo", "region": "Banjul", "phone": "+2207001005"}
+  ],
+  "agents": [
+    {"id": "agent_neema", "name": "Neema Diallo", "field_agent_id": "fa_neema", "outlet": "Main Market", "float_balance": 20174, "cash_balance": 2000000, "outstanding_balance": 500000, "latitude": 13.455, "longitude": -16.579},
+    {"id": "agent_joseph", "name": "Joseph David", "field_agent_id": "fa_saina", "outlet": "Joseph David Shop", "float_balance": 15000, "cash_balance": 39030, "outstanding_balance": 19000, "latitude": 13.469, "longitude": -16.611},
+    {"id": "agent_mamadou", "name": "Mamadou Jallow", "field_agent_id": "fa_isatou", "outlet": "Mamadou Outlet", "float_balance": 10000, "cash_balance": 10615, "outstanding_balance": 3100, "latitude": 13.438, "longitude": -16.666},
+    {"id": "agent_airport", "name": "Airport Outlet", "field_agent_id": "fa_omar", "outlet": "Airport Outlet", "float_balance": 20000, "cash_balance": 4698, "outstanding_balance": 6000, "latitude": 13.345, "longitude": -16.652},
+    {"id": "agent_karicel", "name": "Karicel George", "field_agent_id": "fa_omar", "outlet": "Karicel Store", "float_balance": 10000, "cash_balance": 8367, "outstanding_balance": 1500, "latitude": 13.514, "longitude": -16.687},
+    {"id": "agent_essa", "name": "Essa Kabba", "field_agent_id": "fa_yoram", "outlet": "Essa Kiosk", "float_balance": 15000, "cash_balance": 2186, "outstanding_balance": 500, "latitude": 13.425, "longitude": -16.701},
+    {"id": "agent_seedy", "name": "Seedy Hydara", "field_agent_id": "fa_isatou", "outlet": "Seedy Services", "float_balance": 15000, "cash_balance": 283441, "outstanding_balance": 0, "latitude": 13.487, "longitude": -16.595}
+  ],
+  "customers": [
+    {
+      "id": "cust_hamadi",
+      "name": "Mamdou Hamadi",
+      "surname": "Jallow",
+      "phone": "782645673",
+      "birthday": "22 June, 1994",
+      "national_id": "23019012221",
+      "nationality": "Gambian",
+      "address": "Ndungu Kibbeh, Jokadu District, North Bank Division",
+      "compliance_status": "pending",
+      "kyc_collected_by": "Neema Diallo",
+      "verified_at": null,
+      "compliance_comments": null
+    }
+  ],
+  "float_requests": [
+    {"id": "fr_001", "agent_id": "agent_neema", "amount": 3000, "request_type": "float", "status": "pending"},
+    {"id": "fr_002", "agent_id": "agent_joseph", "amount": 15000, "request_type": "cash", "status": "pending"},
+    {"id": "fr_003", "agent_id": "agent_mamadou", "amount": 10000, "request_type": "float", "status": "pending"},
+    {"id": "fr_004", "agent_id": "agent_airport", "amount": 20000, "request_type": "float", "status": "pending"},
+    {"id": "fr_005", "agent_id": "agent_karicel", "amount": 10000, "request_type": "float", "status": "pending"},
+    {"id": "fr_006", "agent_id": "agent_essa", "amount": 15000, "request_type": "float", "status": "pending"},
+    {"id": "fr_007", "agent_id": "agent_seedy", "amount": 15000, "request_type": "float", "status": "approved"}
+  ],
+  "transactions": [
+    {"id": "tx_001", "agent_id": "agent_neema", "customer_phone": "782645673", "transaction_type": "deposit", "amount": 3400, "commission": 40, "created_at": "2024-01-02T14:35:00", "status": "posted"},
+    {"id": "tx_002", "agent_id": "agent_neema", "customer_phone": "701120784", "transaction_type": "deposit", "amount": 1500, "commission": 18, "created_at": "2024-01-02T13:20:00", "status": "posted"},
+    {"id": "tx_003", "agent_id": "agent_neema", "customer_phone": "752120184", "transaction_type": "deposit", "amount": 2000, "commission": 24, "created_at": "2024-01-02T12:49:00", "status": "posted"},
+    {"id": "tx_004", "agent_id": "agent_neema", "customer_phone": "756753218", "transaction_type": "withdrawal", "amount": 5000, "commission": 75, "created_at": "2024-01-02T12:12:00", "status": "posted"},
+    {"id": "tx_005", "agent_id": "agent_neema", "customer_phone": "744797304", "transaction_type": "deposit", "amount": 13000, "commission": 156, "created_at": "2024-01-02T11:53:00", "status": "posted"},
+    {"id": "tx_006", "agent_id": "agent_joseph", "customer_phone": "700000001", "transaction_type": "withdrawal", "amount": 28810, "commission": 432, "created_at": "2024-01-03T10:15:00", "status": "posted"},
+    {"id": "tx_007", "agent_id": "agent_mamadou", "customer_phone": "700000002", "transaction_type": "deposit", "amount": 10615, "commission": 127, "created_at": "2024-01-03T11:15:00", "status": "posted"}
+  ]
+}
+

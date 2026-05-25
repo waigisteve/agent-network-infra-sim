@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Agent Network Infrastructure Simulation</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="desktop">
+        <nav class="topbar">
+          <div class="logo"></div>
+          <button data-view="reconciliation" class="active">Float Control</button>
+          <button data-view="reports">Reports</button>
+          <button data-view="customers">Customers</button>
+          <button data-view="map">Maps</button>
+          <button data-view="events">Events</button>
+        </nav>
+        <div id="desktop-view" class="panel"></div>
+      </section>
+      <aside class="phone">
+        <h1 id="phone-title">Transactions</h1>
+        <div id="phone-view"></div>
+        <nav class="bottom-nav">
+          <button data-mobile="home" class="active">Home</button>
+          <button data-mobile="transactions">Transactions</button>
+          <button data-mobile="report">Report</button>
+          <button data-mobile="profile">Profile</button>
+        </nav>
+      </aside>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
+
