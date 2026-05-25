@@ -68,7 +68,7 @@ flowchart TB
     postgres[(PostgreSQL<br/>Operational DB)]
     redpanda[Redpanda<br/>Kafka-compatible Broker]
     worker[Background Worker<br/>Event Consumer + Analytics Jobs]
-    console[Redpanda Console<br/>http://127.0.0.1:8080]
+    console[Redpanda Console<br/>http://127.0.0.1:18081]
     docs[API Docs<br/>/docs]
 
     subgraph Frontend Views

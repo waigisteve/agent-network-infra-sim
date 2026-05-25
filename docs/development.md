@@ -19,7 +19,7 @@ Open:
 
 - Frontend: `http://127.0.0.1:5173`
 - API docs: `http://127.0.0.1:8000/docs`
-- Redpanda Console: `http://127.0.0.1:8080`
+- Redpanda Console: `http://127.0.0.1:18081`
 
 ## Seed Users
 
