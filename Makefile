@@ -17,6 +17,9 @@ migrate:
 seed:
 	python -m backend.app.scripts.seed
 
+simulate:
+	docker compose exec -T api python -m backend.app.scripts.simulate_stream --duration-seconds 600 --interval-seconds 2
+
 test:
 	pytest -q
 
@@ -26,4 +29,3 @@ lint:
 
 frontend-test:
 	cd frontend && npm test
-

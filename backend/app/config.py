@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     access_token_minutes: int = 480
     cors_origins: str = "http://127.0.0.1:5173,http://localhost:5173"
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
 settings = Settings()

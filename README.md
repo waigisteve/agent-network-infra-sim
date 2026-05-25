@@ -34,6 +34,20 @@ Seed users all use password `password`:
 - `field@example.com`
 - `agent@example.com`
 
+## Simulate Kafka Inputs
+
+Run a 10-minute simulation with one generated event every 2 seconds:
+
+```bash
+make simulate
+```
+
+Watch the stream in Redpanda Console:
+
+```text
+http://127.0.0.1:18081
+```
+
 ## Backend Test
 
 ```bash
