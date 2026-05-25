@@ -5,7 +5,7 @@ from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import JSON, Date, DateTime, Enum, ForeignKey, Integer, String, Text, func
+from sqlalchemy import JSON, Date, DateTime, Enum, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -38,6 +38,7 @@ class Base(DeclarativeBase):
 
 class UserORM(Base):
     __tablename__ = "users"
+    __table_args__ = (Index("ix_users_role_active", "role", "is_active"),)
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
@@ -61,6 +62,10 @@ class FieldAgentORM(Base):
 
 class AgentORM(Base):
     __tablename__ = "agents"
+    __table_args__ = (
+        Index("ix_agents_field_agent_name", "field_agent_id", "name"),
+        Index("ix_agents_location", "latitude", "longitude"),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     name: Mapped[str] = mapped_column(String(255))
@@ -77,6 +82,10 @@ class AgentORM(Base):
 
 class CustomerORM(Base):
     __tablename__ = "customers"
+    __table_args__ = (
+        Index("ix_customers_status_verified", "compliance_status", "verified_at"),
+        Index("ix_customers_name_surname", "name", "surname"),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     name: Mapped[str] = mapped_column(String(255))
@@ -94,6 +103,10 @@ class CustomerORM(Base):
 
 class FloatRequestORM(Base):
     __tablename__ = "float_requests"
+    __table_args__ = (
+        Index("ix_float_requests_status_requested", "status", "requested_at"),
+        Index("ix_float_requests_agent_status", "agent_id", "status"),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     agent_id: Mapped[str] = mapped_column(ForeignKey("agents.id"), index=True)
@@ -107,9 +120,16 @@ class FloatRequestORM(Base):
 
 class TransactionORM(Base):
     __tablename__ = "transactions"
+    __table_args__ = (
+        Index("ix_transactions_agent_created", "agent_id", "created_at"),
+        Index("ix_transactions_customer_created", "customer_id", "created_at"),
+        Index("ix_transactions_type_created", "transaction_type", "created_at"),
+        Index("ix_transactions_phone_created", "customer_phone", "created_at"),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     agent_id: Mapped[str] = mapped_column(ForeignKey("agents.id"), index=True)
+    customer_id: Mapped[str | None] = mapped_column(ForeignKey("customers.id"), nullable=True, index=True)
     customer_phone: Mapped[str] = mapped_column(String(64))
     transaction_type: Mapped[str] = mapped_column(String(64), index=True)
     amount: Mapped[int] = mapped_column(Integer)
@@ -121,27 +141,48 @@ class TransactionORM(Base):
 
 class EventLogORM(Base):
     __tablename__ = "event_log"
+    __table_args__ = (
+        Index("ix_event_log_topic_created", "topic", "created_at"),
+        Index("ix_event_log_name_created", "name", "created_at"),
+        Index("ix_event_log_aggregate", "aggregate_type", "aggregate_id"),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     topic: Mapped[str] = mapped_column(String(128), index=True)
     name: Mapped[str] = mapped_column(String(128), index=True)
+    aggregate_type: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    aggregate_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    agent_id: Mapped[str | None] = mapped_column(ForeignKey("agents.id"), nullable=True, index=True)
+    customer_id: Mapped[str | None] = mapped_column(ForeignKey("customers.id"), nullable=True, index=True)
+    float_request_id: Mapped[str | None] = mapped_column(ForeignKey("float_requests.id"), nullable=True, index=True)
+    transaction_id: Mapped[str | None] = mapped_column(ForeignKey("transactions.id"), nullable=True, index=True)
     payload: Mapped[dict[str, Any]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class AnalyticsSnapshotORM(Base):
     __tablename__ = "analytics_snapshots"
+    __table_args__ = (
+        Index("ix_analytics_scope_date", "scope", "snapshot_date"),
+        Index("ix_analytics_agent_date", "agent_id", "snapshot_date"),
+        Index("ix_analytics_field_agent_date", "field_agent_id", "snapshot_date"),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     snapshot_date: Mapped[date] = mapped_column(Date, index=True)
+    scope: Mapped[str] = mapped_column(String(64), default="network", index=True)
+    agent_id: Mapped[str | None] = mapped_column(ForeignKey("agents.id"), nullable=True, index=True)
+    field_agent_id: Mapped[str | None] = mapped_column(ForeignKey("field_agents.id"), nullable=True, index=True)
     metrics: Mapped[dict[str, Any]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class WorkerErrorORM(Base):
     __tablename__ = "worker_errors"
+    __table_args__ = (Index("ix_worker_errors_source_created", "source", "created_at"),)
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    event_id: Mapped[str | None] = mapped_column(ForeignKey("event_log.id"), nullable=True, index=True)
     source: Mapped[str] = mapped_column(String(128))
     message: Mapped[str] = mapped_column(Text)
     payload: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
@@ -217,6 +258,7 @@ class KycReviewRequest(BaseModel):
 
 class TransactionCreate(BaseModel):
     agent_id: str
+    customer_id: str | None = None
     customer_phone: str
     transaction_type: str
     amount: int

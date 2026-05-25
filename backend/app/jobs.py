@@ -38,10 +38,10 @@ def materialize_analytics_snapshot(db: Session) -> AnalyticsSnapshotORM:
     snapshot = AnalyticsSnapshotORM(
         id=str(uuid4()),
         snapshot_date=date.today(),
+        scope="network",
         metrics=report.model_dump(mode="json"),
     )
     db.add(snapshot)
     db.commit()
     db.refresh(snapshot)
     return snapshot
-

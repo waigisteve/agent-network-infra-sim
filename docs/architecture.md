@@ -8,6 +8,33 @@ The relational schema is published on dbdiagram.io:
 
 https://dbdiagram.io/d/mnt-c-Users-Hp-agent-network-infra-sim-6a148481dfb20dafcdeb52fe
 
+## Workflow Linkage
+
+The operational tables, audit tables, worker tables, and reporting tables are intentionally linked so the workflow can be traced end to end:
+
+- `transactions.customer_id` links customer activity to KYC/customer records while keeping `customer_phone` as the operational lookup value.
+- `event_log.aggregate_type` and `event_log.aggregate_id` identify the domain aggregate for every event.
+- `event_log.agent_id`, `event_log.customer_id`, `event_log.float_request_id`, and `event_log.transaction_id` provide direct relational links for common event queries.
+- `worker_errors.event_id` links failed consumer processing back to the event that failed.
+- `analytics_snapshots.scope`, `agent_id`, and `field_agent_id` support network-wide, agent-level, and field-agent-level reporting.
+
+Customer-facing and reporting outputs mask customer PII at the API boundary. The database keeps the source values for regulated operations, while API responses from customer, transaction, report, and event-audit endpoints mask customer names, phone numbers, national IDs, birthdays, and addresses.
+
+## Performance Indexes
+
+The schema includes indexes for the expected high-volume filters:
+
+- Auth and user management: `users.email`, `users.role`, `users.agent_id`, `users.role + is_active`.
+- Field operations: `agents.field_agent_id`, `agents.field_agent_id + name`, `agents.latitude + longitude`.
+- KYC queues: `customers.phone`, `customers.compliance_status + verified_at`, `customers.name + surname`.
+- Float workflows: `float_requests.agent_id`, `float_requests.status`, `float_requests.status + requested_at`, `float_requests.agent_id + status`.
+- Transaction history and reports: `transactions.agent_id + created_at`, `transactions.customer_id + created_at`, `transactions.transaction_type + created_at`, `transactions.customer_phone + created_at`.
+- Event audit: `event_log.topic + created_at`, `event_log.name + created_at`, `event_log.aggregate_type + aggregate_id`, plus entity FK indexes.
+- Analytics: `analytics_snapshots.scope + snapshot_date`, `analytics_snapshots.agent_id + snapshot_date`, `analytics_snapshots.field_agent_id + snapshot_date`.
+- Worker failures: `worker_errors.source + created_at`.
+
+Use Postgres `jsonb` plus GIN indexes for `event_log.payload` and `analytics_snapshots.metrics` only when production queries need to search inside those JSON documents frequently.
+
 ## Runtime Components
 
 - React/Vite frontend for admin, reporting, KYC, field map, event audit, and mobile-agent workflows.
@@ -132,6 +159,15 @@ flowchart TB
     postgres --> event_tbl
     postgres --> analytics_tbl
     postgres --> worker_errors_tbl
+
+    tx_tbl -->|customer_id| customers_tbl
+    event_tbl -->|agent_id| agents_tbl
+    event_tbl -->|customer_id| customers_tbl
+    event_tbl -->|float_request_id| float_tbl
+    event_tbl -->|transaction_id| tx_tbl
+    worker_errors_tbl -->|event_id| event_tbl
+    analytics_tbl -->|agent_id| agents_tbl
+    analytics_tbl -->|field_agent_id| field_agents_tbl
 
     float_api -->|float.requested / approved / rejected / disbursed| redpanda
     tx_api -->|transaction.created| redpanda

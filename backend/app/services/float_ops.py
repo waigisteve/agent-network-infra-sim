@@ -21,8 +21,9 @@ async def approve_float_request(db: Session, request_id: str, reviewer: str) -> 
     request.reviewed_at = datetime.now(UTC)
     agent.float_balance += request.amount
     agent.outstanding_balance -= request.amount
-    await publisher.publish(db, "float.approved", {"request_id": request.id, "agent_id": agent.id, "amount": request.amount})
-    await publisher.publish(db, "float.disbursed", {"request_id": request.id, "agent_id": agent.id, "amount": request.amount})
+    payload = {"aggregate_type": "float_request", "aggregate_id": request.id, "request_id": request.id, "float_request_id": request.id, "agent_id": agent.id, "amount": request.amount}
+    await publisher.publish(db, "float.approved", payload)
+    await publisher.publish(db, "float.disbursed", payload)
     db.commit()
     db.refresh(request)
     return request
@@ -35,7 +36,11 @@ async def reject_float_request(db: Session, request_id: str, reviewer: str) -> F
     request.status = FloatRequestStatus.rejected
     request.reviewed_by = reviewer
     request.reviewed_at = datetime.now(UTC)
-    await publisher.publish(db, "float.rejected", {"request_id": request.id, "agent_id": request.agent_id, "amount": request.amount})
+    await publisher.publish(
+        db,
+        "float.rejected",
+        {"aggregate_type": "float_request", "aggregate_id": request.id, "request_id": request.id, "float_request_id": request.id, "agent_id": request.agent_id, "amount": request.amount},
+    )
     db.commit()
     db.refresh(request)
     return request
@@ -75,4 +80,3 @@ def reconciliation(db: Session) -> list[ReconciliationRow]:
             )
         )
     return rows
-

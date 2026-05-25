@@ -87,6 +87,11 @@ def test_transaction_creation_emits_event_and_commission() -> None:
     assert response.json()["commission"] == 41
     assert "transaction.created" in {event["name"] for event in events}
     assert "commission.calculated" in {event["name"] for event in events}
+    transaction_event = next(event for event in events if event["name"] == "transaction.created")
+    assert transaction_event["transaction_id"] == response.json()["id"]
+    assert transaction_event["agent_id"] == "agent_neema"
+    assert transaction_event["payload"]["customer_phone"].startswith("*")
+    assert transaction_event["payload"]["customer_phone"].endswith("673")
 
 
 def test_reconciliation_rows_match_expected_shape() -> None:
@@ -102,6 +107,8 @@ def test_kyc_review_updates_status_and_publishes_event() -> None:
     events = request("GET", "/api/v1/events", token=login()).json()
     assert response.status_code == 200
     assert response.json()["compliance_status"] == "approved"
+    assert response.json()["national_id"].startswith("*")
+    assert response.json()["address"] == "masked address"
     assert "customer.kyc_reviewed" in {event["name"] for event in events}
 
 
@@ -112,6 +119,19 @@ def test_analytics_and_map_endpoints() -> None:
     assert report.status_code == 200
     assert {"Value", "Volume", "Clients", "Float Utilization", "Stockout Rate"}.issubset({metric["label"] for metric in report.json()["metrics"]})
     assert len(map_response.json()["agents"]) >= 5
+
+
+def test_customer_and_reporting_outputs_mask_pii() -> None:
+    admin_token = login()
+    agent_token = login("agent@example.com")
+    customers = request("GET", "/api/v1/customers", token=admin_token).json()
+    transactions = request("GET", "/api/v1/transactions", token=agent_token).json()
+    report = request("GET", "/api/v1/reports/agent/agent_neema", token=agent_token).json()
+    assert customers[0]["phone"].startswith("*")
+    assert customers[0]["national_id"].startswith("*")
+    assert customers[0]["birthday"] == "masked"
+    assert transactions[0]["customer_phone"].startswith("*")
+    assert report["transactions"][0]["customer_phone"].startswith("*")
 
 
 def test_role_permissions_block_unauthorized_actions() -> None:

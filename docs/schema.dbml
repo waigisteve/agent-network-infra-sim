@@ -1,0 +1,203 @@
+Enum role {
+  admin
+  field_agent
+  agent
+  kyc_reviewer
+}
+
+Enum compliance_status {
+  pending
+  approved
+  rejected
+}
+
+Enum float_request_status {
+  pending
+  approved
+  rejected
+}
+
+Table users {
+  id varchar(64) [pk]
+  email varchar(255) [unique, not null]
+  full_name varchar(255) [not null]
+  password_hash varchar(255) [not null]
+  role role [not null]
+  agent_id varchar(64)
+  is_active boolean [not null]
+  created_at timestamp [not null]
+
+  indexes {
+    email [unique]
+    role
+    agent_id
+    (role, is_active)
+  }
+}
+
+Table field_agents {
+  id varchar(64) [pk]
+  name varchar(255) [not null]
+  region varchar(255) [not null]
+  phone varchar(64) [not null]
+}
+
+Table agents {
+  id varchar(64) [pk]
+  name varchar(255) [not null]
+  field_agent_id varchar(64) [not null]
+  outlet varchar(255) [not null]
+  float_balance integer [not null, default: 0]
+  cash_balance integer [not null, default: 0]
+  outstanding_balance integer [not null, default: 0]
+  latitude float [not null]
+  longitude float [not null]
+
+  indexes {
+    field_agent_id
+    (field_agent_id, name)
+    (latitude, longitude)
+  }
+}
+
+Table customers {
+  id varchar(64) [pk]
+  name varchar(255) [not null]
+  surname varchar(255) [not null]
+  phone varchar(64) [not null]
+  birthday varchar(64) [not null]
+  national_id varchar(128) [not null]
+  nationality varchar(128) [not null]
+  address text [not null]
+  compliance_status compliance_status [not null, default: 'pending']
+  kyc_collected_by varchar(255) [not null]
+  verified_at timestamp
+  compliance_comments text
+
+  indexes {
+    phone
+    (compliance_status, verified_at)
+    (name, surname)
+  }
+}
+
+Table float_requests {
+  id varchar(64) [pk]
+  agent_id varchar(64) [not null]
+  amount integer [not null]
+  request_type varchar(32) [not null, default: 'float']
+  status float_request_status [not null, default: 'pending']
+  requested_at timestamp [not null]
+  reviewed_by varchar(255)
+  reviewed_at timestamp
+
+  indexes {
+    agent_id
+    status
+    requested_at
+    (status, requested_at)
+    (agent_id, status)
+  }
+}
+
+Table transactions {
+  id varchar(64) [pk]
+  agent_id varchar(64) [not null]
+  customer_id varchar(64)
+  customer_phone varchar(64) [not null]
+  transaction_type varchar(64) [not null]
+  amount integer [not null]
+  commission integer [not null, default: 0]
+  created_at timestamp [not null]
+  status varchar(64) [not null, default: 'posted']
+
+  indexes {
+    agent_id
+    customer_id
+    customer_phone
+    transaction_type
+    created_at
+    (agent_id, created_at)
+    (customer_id, created_at)
+    (transaction_type, created_at)
+    (customer_phone, created_at)
+  }
+}
+
+Table event_log {
+  id varchar(64) [pk]
+  topic varchar(128) [not null]
+  name varchar(128) [not null]
+  aggregate_type varchar(64)
+  aggregate_id varchar(64)
+  agent_id varchar(64)
+  customer_id varchar(64)
+  float_request_id varchar(64)
+  transaction_id varchar(64)
+  payload json [not null]
+  created_at timestamp [not null]
+
+  indexes {
+    topic
+    name
+    aggregate_type
+    aggregate_id
+    agent_id
+    customer_id
+    float_request_id
+    transaction_id
+    created_at
+    (topic, created_at)
+    (name, created_at)
+    (aggregate_type, aggregate_id)
+  }
+}
+
+Table analytics_snapshots {
+  id varchar(64) [pk]
+  snapshot_date date [not null]
+  scope varchar(64) [not null, default: 'network']
+  agent_id varchar(64)
+  field_agent_id varchar(64)
+  metrics json [not null]
+  created_at timestamp [not null]
+
+  indexes {
+    snapshot_date
+    scope
+    agent_id
+    field_agent_id
+    (scope, snapshot_date)
+    (agent_id, snapshot_date)
+    (field_agent_id, snapshot_date)
+  }
+}
+
+Table worker_errors {
+  id varchar(64) [pk]
+  event_id varchar(64)
+  source varchar(128) [not null]
+  message text [not null]
+  payload json
+  created_at timestamp
+
+  indexes {
+    event_id
+    source
+    created_at
+    (source, created_at)
+  }
+}
+
+Ref: users.agent_id > agents.id
+Ref: agents.field_agent_id > field_agents.id
+Ref: float_requests.agent_id > agents.id
+Ref: transactions.agent_id > agents.id
+Ref: transactions.customer_id > customers.id
+Ref: event_log.agent_id > agents.id
+Ref: event_log.customer_id > customers.id
+Ref: event_log.float_request_id > float_requests.id
+Ref: event_log.transaction_id > transactions.id
+Ref: analytics_snapshots.agent_id > agents.id
+Ref: analytics_snapshots.field_agent_id > field_agents.id
+Ref: worker_errors.event_id > event_log.id

@@ -12,6 +12,7 @@ from backend.app.auth import create_access_token, get_current_user, require_role
 from backend.app.db import get_db
 from backend.app.events import publisher
 from backend.app.jobs import build_agent_network_report
+from backend.app.masking import mask_customer_record, mask_payload
 from backend.app.models import (
     AgentORM,
     CustomerORM,
@@ -50,6 +51,25 @@ def customer_out(customer: CustomerORM) -> dict[str, object]:
         "verified_at": customer.verified_at,
         "compliance_comments": customer.compliance_comments,
     }
+
+
+def customer_public_out(customer: CustomerORM) -> dict[str, object]:
+    return mask_customer_record(customer_out(customer))
+
+
+def transaction_out(tx: TransactionORM, mask_customer: bool = True) -> dict[str, object]:
+    record = {
+        "id": tx.id,
+        "agent_id": tx.agent_id,
+        "customer_id": tx.customer_id,
+        "customer_phone": tx.customer_phone,
+        "transaction_type": tx.transaction_type,
+        "amount": tx.amount,
+        "commission": tx.commission,
+        "created_at": tx.created_at,
+        "status": tx.status,
+    }
+    return mask_customer_record(record) if mask_customer else record
 
 
 def user_out(user: UserORM) -> dict[str, object]:
@@ -103,7 +123,7 @@ async def field_agents(
 
 @router.get("/customers")
 async def customers(db: Annotated[Session, Depends(get_db)], _: Annotated[UserORM, Depends(get_current_user)]) -> list[dict[str, object]]:
-    return [customer_out(customer) for customer in db.scalars(select(CustomerORM)).all()]
+    return [customer_public_out(customer) for customer in db.scalars(select(CustomerORM)).all()]
 
 
 @router.post("/kyc/reviews")
@@ -118,10 +138,14 @@ async def review_kyc(
     customer.compliance_status = request.status
     customer.compliance_comments = request.comments
     customer.verified_at = datetime.now(UTC)
-    await publisher.publish(db, "customer.kyc_reviewed", {"customer_id": customer.id, "status": request.status, "reviewer": request.reviewer})
+    await publisher.publish(
+        db,
+        "customer.kyc_reviewed",
+        {"aggregate_type": "customer", "aggregate_id": customer.id, "customer_id": customer.id, "status": request.status, "reviewer": request.reviewer},
+    )
     db.commit()
     db.refresh(customer)
-    return customer_out(customer)
+    return customer_public_out(customer)
 
 
 @router.get("/float/requests")
@@ -152,7 +176,11 @@ async def create_float_request(
     agent_id = user.agent_id if user.role == Role.agent and user.agent_id else request.agent_id
     item = FloatRequestORM(id=f"fr_{uuid4().hex[:10]}", agent_id=agent_id, amount=request.amount, request_type=request.request_type)
     db.add(item)
-    await publisher.publish(db, "float.requested", {"request_id": item.id, "agent_id": item.agent_id, "amount": item.amount})
+    await publisher.publish(
+        db,
+        "float.requested",
+        {"aggregate_type": "float_request", "aggregate_id": item.id, "request_id": item.id, "float_request_id": item.id, "agent_id": item.agent_id, "amount": item.amount},
+    )
     db.commit()
     db.refresh(item)
     return {"id": item.id, "agent_id": item.agent_id, "amount": item.amount, "request_type": item.request_type, "status": item.status}
@@ -200,16 +228,7 @@ async def transactions(db: Annotated[Session, Depends(get_db)], user: Annotated[
     if user.role == Role.agent and user.agent_id:
         query = query.where(TransactionORM.agent_id == user.agent_id)
     return [
-        {
-            "id": tx.id,
-            "agent_id": tx.agent_id,
-            "customer_phone": tx.customer_phone,
-            "transaction_type": tx.transaction_type,
-            "amount": tx.amount,
-            "commission": tx.commission,
-            "created_at": tx.created_at,
-            "status": tx.status,
-        }
+        transaction_out(tx)
         for tx in db.scalars(query).all()
     ]
 
@@ -258,7 +277,7 @@ async def agent_report(agent_id: str, db: Annotated[Session, Depends(get_db)], u
         "float_balance": agent.float_balance,
         "commission_earned": sum(tx.commission for tx in agent_transactions),
         "transactions": [
-            {"id": tx.id, "customer_phone": tx.customer_phone, "transaction_type": tx.transaction_type, "amount": tx.amount, "commission": tx.commission, "created_at": tx.created_at}
+            transaction_out(tx)
             for tx in agent_transactions
         ],
     }
@@ -290,7 +309,18 @@ async def events(
     _: Annotated[UserORM, Depends(require_roles(Role.admin))],
 ) -> list[dict[str, object]]:
     return [
-        {"id": event.id, "topic": event.topic, "name": event.name, "payload": event.payload, "created_at": event.created_at}
+        {
+            "id": event.id,
+            "topic": event.topic,
+            "name": event.name,
+            "aggregate_type": event.aggregate_type,
+            "aggregate_id": event.aggregate_id,
+            "agent_id": event.agent_id,
+            "customer_id": event.customer_id,
+            "float_request_id": event.float_request_id,
+            "transaction_id": event.transaction_id,
+            "payload": mask_payload(event.payload),
+            "created_at": event.created_at,
+        }
         for event in db.scalars(select(EventLogORM).order_by(EventLogORM.created_at.desc())).all()
     ]
-

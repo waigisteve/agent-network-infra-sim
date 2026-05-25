@@ -15,6 +15,18 @@ Demo login body:
 
 Use the returned bearer token for all other endpoints.
 
+## Data Masking
+
+Customer-facing and reporting endpoints mask customer PII in API responses:
+
+- names become initial-only values such as `M***`
+- phone numbers expose only the final three digits
+- national IDs expose only the final four digits
+- addresses return `masked address`
+- birthdays return `masked`
+
+Masking applies to customer lists, KYC review responses, transaction lists, agent reports, and event audit payloads. The operational database retains source values for authorized back-office workflows.
+
 ## Core Resources
 
 - `GET /agents`
@@ -33,4 +45,3 @@ Use the returned bearer token for all other endpoints.
 - `GET /reports/agent/{agent_id}`
 - `GET /maps/field-team`
 - `GET /events`
-

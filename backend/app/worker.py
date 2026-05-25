@@ -36,7 +36,12 @@ async def consume_forever() -> None:
                     materialize_analytics_snapshot(db)
             except Exception as exc:  # pragma: no cover - defensive worker path
                 with SessionLocal() as db:
-                    db.add(WorkerErrorORM(id=str(uuid4()), source=message.topic, message=str(exc), payload={"raw": message.value.decode("utf-8")}))
+                    event_id = None
+                    try:
+                        event_id = json.loads(message.value.decode("utf-8")).get("id")
+                    except json.JSONDecodeError:
+                        event_id = None
+                    db.add(WorkerErrorORM(id=str(uuid4()), event_id=event_id, source=message.topic, message=str(exc), payload={"raw": message.value.decode("utf-8")}))
                     db.commit()
     finally:
         await consumer.stop()
@@ -48,4 +53,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

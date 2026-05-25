@@ -41,7 +41,19 @@ def seed(db: Session) -> None:
     db.flush()
     db.add_all(CustomerORM(**item) for item in data["customers"])
     db.add_all(FloatRequestORM(**item) for item in data["float_requests"])
-    db.add_all(TransactionORM(**(item | {"created_at": datetime.fromisoformat(item["created_at"])})) for item in data["transactions"])
+    customers_by_phone = {item["phone"]: item["id"] for item in data["customers"]}
+    db.add_all(
+        TransactionORM(
+            **(
+                item
+                | {
+                    "customer_id": customers_by_phone.get(item["customer_phone"]),
+                    "created_at": datetime.fromisoformat(item["created_at"]),
+                }
+            )
+        )
+        for item in data["transactions"]
+    )
     db.add_all(
         [
             UserORM(id="user_admin", email="admin@example.com", full_name="Operations Admin", password_hash=hash_password("password"), role=Role.admin),

@@ -8,6 +8,7 @@ from aiokafka import AIOKafkaProducer
 from sqlalchemy.orm import Session
 
 from backend.app.config import settings
+from backend.app.masking import mask_payload
 from backend.app.models import EventLogORM
 
 
@@ -43,14 +44,24 @@ class EventPublisher:
 
     async def publish(self, db: Session, name: str, payload: dict[str, Any]) -> EventLogORM:
         topic = TOPICS.get(name, "platform-events")
-        event = EventLogORM(id=str(uuid4()), topic=topic, name=name, payload=payload)
+        event = EventLogORM(
+            id=str(uuid4()),
+            topic=topic,
+            name=name,
+            aggregate_type=payload.get("aggregate_type"),
+            aggregate_id=payload.get("aggregate_id"),
+            agent_id=payload.get("agent_id"),
+            customer_id=payload.get("customer_id"),
+            float_request_id=payload.get("float_request_id") or payload.get("request_id"),
+            transaction_id=payload.get("transaction_id"),
+            payload=mask_payload(payload),
+        )
         db.add(event)
         db.flush()
         if self._producer is not None:
-            message = {"id": event.id, "name": name, "payload": payload, "created_at": event.created_at.isoformat()}
+            message = {"id": event.id, "name": name, "payload": event.payload, "created_at": event.created_at.isoformat()}
             await self._producer.send_and_wait(topic, json.dumps(message).encode("utf-8"))
         return event
 
 
 publisher = EventPublisher()
-
