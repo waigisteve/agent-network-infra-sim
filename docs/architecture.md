@@ -256,7 +256,7 @@ flowchart TB
     readonly[agent_readonly<br/>SELECT only]
     db[(PostgreSQL)]
     rls[Forced RLS Policies<br/>*_app_rw + *_readonly]
-    backups[Encrypted Backups<br/>pg_dump | gzip | AES-256]
+    backups[Encrypted Backups<br/>pg_dump to gzip to AES-256]
     hosted[Hosted Database Controls<br/>pgAudit<br/>firewall/private networking<br/>encryption at rest]
 
     migration -->|DATABASE_MIGRATION_URL| tls --> pg_hba --> owner
