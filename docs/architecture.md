@@ -271,6 +271,14 @@ flowchart TB
     db -. production / managed .-> hosted
 ```
 
+Summary:
+
+- Alembic migrations use `DATABASE_MIGRATION_URL` and the `agent_owner` role so schema changes are separated from runtime traffic.
+- The API and worker use `DATABASE_URL` and the `agent_app` role, which is limited to table-level read/write grants and must pass through forced RLS policies.
+- Reporting and audit clients should use `agent_readonly`, which receives SELECT-only access through read-only RLS policies.
+- Local Docker access is constrained by SCRAM-SHA-256 authentication, `pg_hba.conf`, TLS connection settings, and loopback-bound database ports.
+- Logical backups are encrypted before being written to disk; pgAudit, firewall/private networking, and encryption at rest remain provider-level controls for hosted PostgreSQL.
+
 ## Security Effects On Schema State
 
 | State | Effect |
