@@ -176,6 +176,7 @@ async def create_float_request(
     agent_id = user.agent_id if user.role == Role.agent and user.agent_id else request.agent_id
     item = FloatRequestORM(id=f"fr_{uuid4().hex[:10]}", agent_id=agent_id, amount=request.amount, request_type=request.request_type)
     db.add(item)
+    db.flush()
     await publisher.publish(
         db,
         "float.requested",

@@ -50,6 +50,7 @@ async def create_transaction(db: Session, request: TransactionCreate) -> Transac
     elif request.transaction_type == "withdrawal":
         agent.cash_balance -= request.amount
         agent.float_balance += request.amount
+    db.flush()
     await publisher.publish(
         db,
         "transaction.created",

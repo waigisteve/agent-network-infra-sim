@@ -94,6 +94,28 @@ def test_transaction_creation_emits_event_and_commission() -> None:
     assert transaction_event["payload"]["customer_phone"].endswith("673")
 
 
+def test_transaction_event_references_persisted_transaction() -> None:
+    token = login("agent@example.com")
+    response = request("POST", "/api/v1/transactions", token=token, json={"agent_id": "agent_neema", "customer_phone": "782645673", "transaction_type": "deposit", "amount": 2400})
+    payload = response.json()
+    events = request("GET", "/api/v1/events", token=login()).json()
+    transaction_event = next(event for event in events if event["name"] == "transaction.created" and event["transaction_id"] == payload["id"])
+
+    assert response.status_code == 200
+    assert transaction_event["transaction_id"] == payload["id"]
+
+
+def test_float_request_event_references_persisted_request() -> None:
+    token = login("agent@example.com")
+    response = request("POST", "/api/v1/float/requests", token=token, json={"agent_id": "agent_neema", "amount": 1200, "request_type": "float"})
+    payload = response.json()
+    events = request("GET", "/api/v1/events", token=login()).json()
+    float_event = next(event for event in events if event["name"] == "float.requested" and event["float_request_id"] == payload["id"])
+
+    assert response.status_code == 200
+    assert float_event["float_request_id"] == payload["id"]
+
+
 def test_reconciliation_rows_match_expected_shape() -> None:
     response = request("GET", "/api/v1/float/reconciliation", token=login())
     row = next(item for item in response.json() if item["agent_id"] == "agent_neema")

@@ -56,6 +56,7 @@ async def run_simulation(duration_seconds: int, interval_seconds: float) -> None
                         request_type=random.choice(["float", "cash"]),
                     )
                     db.add(request)
+                    db.flush()
                     await publisher.publish(
                         db,
                         "float.requested",
