@@ -57,7 +57,23 @@ pytest -q
 
 ## PostgreSQL TLS
 
-Set `DATABASE_SSL_MODE=require` for encrypted PostgreSQL connections. Use `verify-ca` or `verify-full` with `DATABASE_SSL_ROOT_CERT=/path/to/ca.pem` when the server certificate should be verified. If the database requires mutual TLS, also set `DATABASE_SSL_CERT=/path/to/client-cert.pem` and `DATABASE_SSL_KEY=/path/to/client-key.pem`.
+Set `DATABASE_SSL_MODE=require` for encrypted PostgreSQL connections. Use `verify-ca` or `verify-full` with `DATABASE_SSL_ROOT_CERT=/path/to/ca.pem` when the server certificate should be verified. If the database requires mutual TLS, also set `DATABASE_SSL_CERT=/path/to/client-cert.pem` and `DATABASE_SSL_KEY=/path/to/client-key.pem`. The local Docker example uses `prefer` so it can run against the stock Postgres image without committed private keys; production should use `verify-full`.
+
+## Database Hardening
+
+Implemented in this repo:
+
+- RBAC and least privilege through separate owner, application, and read-only database users.
+- SCRAM-SHA-256 password hashing and `pg_hba.conf` rules for the local PostgreSQL container.
+- Row-Level Security enabled by the `0002_postgres_security` Alembic migration for PostgreSQL tables.
+- Local network restriction by binding Postgres to `127.0.0.1` and allowing only SCRAM-authenticated local/Docker subnets in `docker/postgres/pg_hba.conf`.
+- Encrypted logical backups through `make backup`, which writes AES-256 encrypted dumps using `BACKUP_ENCRYPTION_PASSPHRASE`.
+
+Managed-platform controls:
+
+- pgAudit requires the `pgaudit` extension to be installed and loaded by the PostgreSQL provider or a custom image.
+- Firewall rules and private networking should be enforced by the cloud database platform in addition to `pg_hba.conf`.
+- Encryption at rest should be enabled on the managed PostgreSQL storage volume or disk encryption layer.
 
 ## Docs
 

@@ -8,7 +8,9 @@ python - <<'PY'
 from pathlib import Path
 path = Path(".env")
 text = path.read_text()
-text = text.replace("change-this-local-password", "set-a-local-password")
+text = text.replace("change-this-local-owner-password", "set-a-local-owner-password")
+text = text.replace("change-this-local-app-password", "set-a-local-app-password")
+text = text.replace("change-this-local-readonly-password", "set-a-local-readonly-password")
 text = text.replace("replace-with-a-long-random-secret", "set-a-long-random-local-secret")
 path.write_text(text)
 PY
@@ -61,6 +63,18 @@ http://127.0.0.1:18081
 ```
 
 The same events are persisted in Postgres in `event_log` for audit/debugging.
+
+## Database Hardening
+
+The local PostgreSQL stack uses SCRAM authentication, separate owner/application/read-only users, `pg_hba.conf` network restrictions, and PostgreSQL RLS policies after migrations are applied. Use `POSTGRES_BIND_ADDRESS=127.0.0.1` for local-only exposure.
+
+Run encrypted logical backups with:
+
+```bash
+BACKUP_ENCRYPTION_PASSPHRASE="set-a-secret-outside-git" make backup
+```
+
+Do not commit generated backup files or certificate/private-key material. For hosted PostgreSQL, enable provider firewall/private-network controls, pgAudit, and storage encryption at rest in the platform.
 
 ## Local Without Docker
 

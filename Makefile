@@ -1,4 +1,4 @@
-.PHONY: setup up down migrate seed test lint frontend-test
+.PHONY: setup up down migrate seed backup test lint frontend-test
 
 setup:
 	python3 -m venv .venv
@@ -16,6 +16,9 @@ migrate:
 
 seed:
 	python -m backend.app.scripts.seed
+
+backup:
+	scripts/encrypted_pg_backup.sh
 
 simulate:
 	docker compose exec -T api python -m backend.app.scripts.simulate_stream --duration-seconds 600 --interval-seconds 2
