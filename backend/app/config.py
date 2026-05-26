@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     app_name: str = "Agent Network Platform"
     environment: str = "local"
     database_url: str = "sqlite:///./agent_network.db"
+    database_migration_url: str = ""
     database_ssl_mode: str = ""
     database_ssl_root_cert: str = ""
     database_ssl_cert: str = ""
