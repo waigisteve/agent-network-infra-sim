@@ -55,6 +55,10 @@ source .venv/bin/activate
 pytest -q
 ```
 
+## PostgreSQL TLS
+
+Set `DATABASE_SSL_MODE=require` for encrypted PostgreSQL connections. Use `verify-ca` or `verify-full` with `DATABASE_SSL_ROOT_CERT=/path/to/ca.pem` when the server certificate should be verified. If the database requires mutual TLS, also set `DATABASE_SSL_CERT=/path/to/client-cert.pem` and `DATABASE_SSL_KEY=/path/to/client-key.pem`.
+
 ## Docs
 
 - [Development](docs/development.md)

@@ -7,6 +7,10 @@ class Settings(BaseSettings):
     app_name: str = "Agent Network Platform"
     environment: str = "local"
     database_url: str = "sqlite:///./agent_network.db"
+    database_ssl_mode: str = ""
+    database_ssl_root_cert: str = ""
+    database_ssl_cert: str = ""
+    database_ssl_key: str = ""
     kafka_bootstrap_servers: str = "localhost:9092"
     kafka_enabled: bool = False
     jwt_secret_key: str = "local-dev-only-not-a-production-secret"
