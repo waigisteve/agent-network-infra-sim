@@ -23,6 +23,21 @@ Open:
 - API docs: `http://127.0.0.1:8000/docs`
 - Redpanda Console: `http://127.0.0.1:18081`
 
+Container endpoints exposed for local testing:
+
+| Service | URL or endpoint | Purpose |
+| --- | --- | --- |
+| Frontend | `http://127.0.0.1:5173` | React/Vite web app |
+| API | `http://127.0.0.1:8000` | FastAPI service |
+| API docs | `http://127.0.0.1:8000/docs` | OpenAPI browser |
+| Health | `http://127.0.0.1:8000/health` | Liveness check |
+| Readiness | `http://127.0.0.1:8000/ready` | Database/Kafka readiness |
+| Redpanda Console | `http://127.0.0.1:18081` | Kafka topic browser |
+| Kafka bootstrap | `127.0.0.1:19092` | External Kafka client endpoint |
+| PostgreSQL | `127.0.0.1:${POSTGRES_HOST_PORT:-55432}` | Local database endpoint |
+
+The PostgreSQL host port defaults to `55432` to avoid conflicts with local database installs on `5432`.
+
 ## Seed Users
 
 All demo passwords are `password`.
@@ -67,6 +82,16 @@ The same events are persisted in Postgres in `event_log` for audit/debugging.
 ## Database Hardening
 
 The local PostgreSQL stack uses SCRAM authentication, separate owner/application/read-only users, `pg_hba.conf` network restrictions, and PostgreSQL RLS policies after migrations are applied. Use `POSTGRES_BIND_ADDRESS=127.0.0.1` for local-only exposure.
+
+Use these database roles by responsibility:
+
+| Role | Config key | Allowed use |
+| --- | --- | --- |
+| Owner | `POSTGRES_OWNER_USER` / `DATABASE_MIGRATION_URL` | Alembic migrations and schema ownership only |
+| Application | `POSTGRES_APP_USER` / `DATABASE_URL` | API and worker runtime reads/writes |
+| Read-only | `POSTGRES_READONLY_USER` | Reporting, BI, and audit reads |
+
+If an existing local Docker volume was created before the hardening changes, the init script will not rerun automatically. Apply the role bootstrap and transfer table ownership once before running `alembic upgrade head`. Fresh volumes do not need this repair path.
 
 Run encrypted logical backups with:
 

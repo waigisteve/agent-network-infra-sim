@@ -27,6 +27,31 @@ Open:
 - API docs: `http://127.0.0.1:8000/docs`
 - Redpanda Console: `http://127.0.0.1:18081`
 
+## Testing URLs
+
+When the Docker stack is running, use:
+
+- Web app: `http://127.0.0.1:5173`
+- API base URL: `http://127.0.0.1:8000`
+- API docs: `http://127.0.0.1:8000/docs`
+- Health check: `http://127.0.0.1:8000/health`
+- Readiness check: `http://127.0.0.1:8000/ready`
+- Redpanda Console: `http://127.0.0.1:18081`
+- Kafka external bootstrap: `127.0.0.1:19092`
+- PostgreSQL host endpoint: `127.0.0.1:${POSTGRES_HOST_PORT:-55432}`
+
+Use the application role for runtime database testing:
+
+```text
+postgresql://agent_app:<POSTGRES_APP_PASSWORD>@127.0.0.1:55432/agent_network
+```
+
+Use the owner role only for migrations:
+
+```text
+postgresql://agent_owner:<POSTGRES_OWNER_PASSWORD>@127.0.0.1:55432/agent_network
+```
+
 Seed users all use password `password`:
 
 - `admin@example.com`
@@ -81,3 +106,4 @@ Managed-platform controls:
 - [Development](docs/development.md)
 - [Architecture](docs/architecture.md)
 - [API](docs/api.md)
+- [Database Security](docs/database-security.md)
