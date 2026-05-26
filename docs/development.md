@@ -36,6 +36,8 @@ Container endpoints exposed for local testing:
 | Kafka bootstrap | `127.0.0.1:19092` | External Kafka client endpoint |
 | PostgreSQL | `127.0.0.1:${POSTGRES_HOST_PORT:-55432}` | Local database endpoint |
 
+The frontend, API, and Redpanda Console are HTTP endpoints. Kafka and PostgreSQL are TCP service endpoints, so they are intentionally documented without `http://` or `https://`.
+
 The PostgreSQL host port defaults to `55432` to avoid conflicts with local database installs on `5432`.
 
 ## Seed Users

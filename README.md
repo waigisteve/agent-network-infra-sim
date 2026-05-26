@@ -31,12 +31,17 @@ Open:
 
 When the Docker stack is running, use:
 
+Browser and API endpoints use plain local HTTP, not HTTPS:
+
 - Web app: `http://127.0.0.1:5173`
 - API base URL: `http://127.0.0.1:8000`
 - API docs: `http://127.0.0.1:8000/docs`
 - Health check: `http://127.0.0.1:8000/health`
 - Readiness check: `http://127.0.0.1:8000/ready`
 - Redpanda Console: `http://127.0.0.1:18081`
+
+Non-HTTP service endpoints do not use `http://`:
+
 - Kafka external bootstrap: `127.0.0.1:19092`
 - PostgreSQL host endpoint: `127.0.0.1:${POSTGRES_HOST_PORT:-55432}`
 

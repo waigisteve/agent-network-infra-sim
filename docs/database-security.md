@@ -15,6 +15,8 @@ This repo implements local PostgreSQL hardening for the Docker stack and documen
 | Kafka external bootstrap | `127.0.0.1:19092` | External Kafka clients |
 | PostgreSQL | `127.0.0.1:${POSTGRES_HOST_PORT:-55432}` | Local DB endpoint bound to loopback |
 
+Use `http://`, not `https://`, for local browser/API endpoints. Kafka and PostgreSQL are not HTTP services, so client tools should use their host/port connection strings instead of browser URLs.
+
 ## Roles
 
 | Role | Environment keys | Purpose | Expected permissions |
