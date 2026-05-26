@@ -17,7 +17,34 @@ Enum float_request_status {
   rejected
 }
 
-Table users {
+TableGroup "PostgreSQL security controls" {
+  users
+  field_agents
+  agents
+  customers
+  float_requests
+  transactions
+  event_log
+  analytics_snapshots
+  worker_errors
+}
+
+Note: '''
+Database role model:
+- agent_owner owns schema objects and runs Alembic through DATABASE_MIGRATION_URL.
+- agent_app is the runtime API/worker role from DATABASE_URL and receives SELECT, INSERT, UPDATE, DELETE grants.
+- agent_readonly is for reporting/audit access and receives SELECT grants only.
+
+Security controls:
+- All application tables have ENABLE ROW LEVEL SECURITY and FORCE ROW LEVEL SECURITY from migration 0002_postgres_security.
+- Each table receives an *_app_rw policy for runtime reads/writes and an *_readonly policy for SELECT-only access.
+- Network access is constrained by pg_hba.conf and SCRAM-SHA-256 authentication.
+- TLS parameters are supplied by DATABASE_SSL_MODE and certificate path variables.
+- Encrypted logical backups are produced by scripts/encrypted_pg_backup.sh.
+- pgAudit, firewall/private networking, and encryption at rest are hosted database controls.
+'''
+
+Table users [note: 'Forced RLS. Policies: users_app_rw for agent_app read/write; users_readonly for SELECT. Owner: agent_owner.'] {
   id varchar(64) [pk]
   email varchar(255) [unique, not null]
   full_name varchar(255) [not null]
@@ -35,14 +62,14 @@ Table users {
   }
 }
 
-Table field_agents {
+Table field_agents [note: 'Forced RLS. Policies: field_agents_app_rw for agent_app read/write; field_agents_readonly for SELECT. Owner: agent_owner.'] {
   id varchar(64) [pk]
   name varchar(255) [not null]
   region varchar(255) [not null]
   phone varchar(64) [not null]
 }
 
-Table agents {
+Table agents [note: 'Forced RLS. Policies: agents_app_rw for agent_app read/write; agents_readonly for SELECT. Owner: agent_owner.'] {
   id varchar(64) [pk]
   name varchar(255) [not null]
   field_agent_id varchar(64) [not null]
@@ -60,7 +87,7 @@ Table agents {
   }
 }
 
-Table customers {
+Table customers [note: 'Forced RLS. Policies: customers_app_rw for agent_app read/write; customers_readonly for SELECT. PII is stored here and masked at the API boundary. Owner: agent_owner.'] {
   id varchar(64) [pk]
   name varchar(255) [not null]
   surname varchar(255) [not null]
@@ -81,7 +108,7 @@ Table customers {
   }
 }
 
-Table float_requests {
+Table float_requests [note: 'Forced RLS. Policies: float_requests_app_rw for agent_app read/write; float_requests_readonly for SELECT. Owner: agent_owner.'] {
   id varchar(64) [pk]
   agent_id varchar(64) [not null]
   amount integer [not null]
@@ -100,7 +127,7 @@ Table float_requests {
   }
 }
 
-Table transactions {
+Table transactions [note: 'Forced RLS. Policies: transactions_app_rw for agent_app read/write; transactions_readonly for SELECT. Owner: agent_owner.'] {
   id varchar(64) [pk]
   agent_id varchar(64) [not null]
   customer_id varchar(64)
@@ -124,7 +151,7 @@ Table transactions {
   }
 }
 
-Table event_log {
+Table event_log [note: 'Forced RLS. Policies: event_log_app_rw for agent_app read/write; event_log_readonly for SELECT. Audit events are persisted here before/alongside Kafka publishing. Owner: agent_owner.'] {
   id varchar(64) [pk]
   topic varchar(128) [not null]
   name varchar(128) [not null]
@@ -153,7 +180,7 @@ Table event_log {
   }
 }
 
-Table analytics_snapshots {
+Table analytics_snapshots [note: 'Forced RLS. Policies: analytics_snapshots_app_rw for agent_app read/write; analytics_snapshots_readonly for SELECT. Owner: agent_owner.'] {
   id varchar(64) [pk]
   snapshot_date date [not null]
   scope varchar(64) [not null, default: 'network']
@@ -173,7 +200,7 @@ Table analytics_snapshots {
   }
 }
 
-Table worker_errors {
+Table worker_errors [note: 'Forced RLS. Policies: worker_errors_app_rw for agent_app read/write; worker_errors_readonly for SELECT. Owner: agent_owner.'] {
   id varchar(64) [pk]
   event_id varchar(64)
   source varchar(128) [not null]

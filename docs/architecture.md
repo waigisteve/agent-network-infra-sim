@@ -8,6 +8,14 @@ The relational schema is published on dbdiagram.io:
 
 https://dbdiagram.io/d/mnt-c-Users-Hp-agent-network-infra-sim-6a148481dfb20dafcdeb52fe
 
+The source DBML for the diagram lives in [`docs/schema.dbml`](schema.dbml). It now includes the database security posture for every application table:
+
+- forced Row-Level Security
+- app read/write policy
+- read-only select policy
+- owner/app/read-only role effects
+- migration-only ownership through `DATABASE_MIGRATION_URL`
+
 ## Workflow Linkage
 
 The operational tables, audit tables, worker tables, and reporting tables are intentionally linked so the workflow can be traced end to end:
@@ -43,6 +51,7 @@ Use Postgres `jsonb` plus GIN indexes for `event_log.payload` and `analytics_sna
 - Redpanda Kafka-compatible broker for domain events.
 - Worker process for analytics materialization and future stream consumers.
 - Alembic migrations for schema changes.
+- Database security controls: owner/app/read-only PostgreSQL roles, SCRAM-SHA-256 authentication, `pg_hba.conf` network rules, forced RLS policies, encrypted logical backups, and hosted pgAudit/encryption-at-rest requirements.
 
 ## Data Flow
 
@@ -65,7 +74,14 @@ flowchart TB
     frontend[React / Vite Frontend<br/>http://127.0.0.1:5173]
     api[FastAPI Backend<br/>/api/v1<br/>JWT Auth + Role Guards]
     auth[Auth Module<br/>JWT + bcrypt<br/>Roles: admin, field_agent, agent, kyc_reviewer]
-    postgres[(PostgreSQL<br/>Operational DB)]
+    migration[Alembic Migrations<br/>DATABASE_MIGRATION_URL<br/>owner role only]
+    db_security[DB Security Boundary<br/>SCRAM + pg_hba.conf<br/>TLS config + loopback bind]
+    postgres[(PostgreSQL<br/>Operational DB<br/>Forced RLS)]
+    app_role[agent_app role<br/>runtime read/write]
+    owner_role[agent_owner role<br/>schema owner]
+    readonly_role[agent_readonly role<br/>SELECT only]
+    backup[Encrypted Backup<br/>pg_dump + gzip + AES-256]
+    managed_controls[Hosted Controls<br/>pgAudit + firewall/private network<br/>encryption at rest]
     redpanda[Redpanda<br/>Kafka-compatible Broker]
     worker[Background Worker<br/>Event Consumer + Analytics Jobs]
     console[Redpanda Console<br/>http://127.0.0.1:18081]
@@ -94,15 +110,15 @@ flowchart TB
     end
 
     subgraph PostgreSQL Tables
-        users_tbl[(users)]
-        agents_tbl[(agents)]
-        field_agents_tbl[(field_agents)]
-        customers_tbl[(customers)]
-        float_tbl[(float_requests)]
-        tx_tbl[(transactions)]
-        event_tbl[(event_log)]
-        analytics_tbl[(analytics_snapshots)]
-        worker_errors_tbl[(worker_errors)]
+        users_tbl[(users<br/>RLS forced)]
+        agents_tbl[(agents<br/>RLS forced)]
+        field_agents_tbl[(field_agents<br/>RLS forced)]
+        customers_tbl[(customers<br/>RLS forced)]
+        float_tbl[(float_requests<br/>RLS forced)]
+        tx_tbl[(transactions<br/>RLS forced)]
+        event_tbl[(event_log<br/>RLS forced)]
+        analytics_tbl[(analytics_snapshots<br/>RLS forced)]
+        worker_errors_tbl[(worker_errors<br/>RLS forced)]
     end
 
     subgraph Kafka Topics
@@ -129,6 +145,16 @@ flowchart TB
     docs --> api
 
     api --> auth
+    migration -->|schema changes only| owner_role
+    owner_role --> db_security
+    api -->|DATABASE_URL| app_role
+    worker -->|DATABASE_URL| app_role
+    reports_ui -.->|BI / audit reads| readonly_role
+    app_role --> db_security
+    readonly_role --> db_security
+    db_security --> postgres
+    postgres --> backup
+    postgres -. hosted deployments .-> managed_controls
     api --> agents_api
     api --> field_api
     api --> customers_api
@@ -140,15 +166,15 @@ flowchart TB
     api --> events_api
 
     auth --> users_tbl
-    agents_api --> postgres
-    field_api --> postgres
-    customers_api --> postgres
-    kyc_api --> postgres
-    float_api --> postgres
-    tx_api --> postgres
-    reports_api --> postgres
-    map_api --> postgres
-    events_api --> postgres
+    agents_api --> app_role
+    field_api --> app_role
+    customers_api --> app_role
+    kyc_api --> app_role
+    float_api --> app_role
+    tx_api --> app_role
+    reports_api --> app_role
+    map_api --> app_role
+    events_api --> app_role
 
     postgres --> users_tbl
     postgres --> agents_tbl
@@ -185,7 +211,6 @@ flowchart TB
     redpanda --> worker
     worker --> analytics_tbl
     worker --> worker_errors_tbl
-    worker --> postgres
     console --> redpanda
 ```
 
@@ -196,22 +221,64 @@ sequenceDiagram
     participant U as User
     participant FE as React Frontend
     participant API as FastAPI Backend
-    participant DB as PostgreSQL
+    participant APP as agent_app DB Role
+    participant DB as PostgreSQL + Forced RLS
     participant K as Redpanda/Kafka
     participant W as Worker
 
     U->>FE: Login / perform action
     FE->>API: API request with JWT
     API->>API: Validate role permissions
-    API->>DB: Update operational tables
-    API->>DB: Insert event_log audit record
+    API->>APP: Connect with DATABASE_URL
+    APP->>DB: Update operational tables through RLS policies
+    APP->>DB: Insert event_log audit record through RLS policies
     API->>K: Publish domain event
     K->>W: Worker consumes event
-    W->>DB: Update analytics snapshots / derived data
+    W->>APP: Connect with runtime app role
+    APP->>DB: Update analytics snapshots / derived data
     FE->>API: Fetch updated reports/reconciliation
-    API->>DB: Read current state
+    API->>APP: Read current state
+    APP->>DB: Read through RLS policies
     API-->>FE: Return dashboard/mobile data
 ```
+
+## Database Security Flow
+
+```mermaid
+flowchart TB
+    migration[Alembic CLI / CI Migration Step]
+    api_runtime[API + Worker Runtime]
+    bi[BI / Audit Reader]
+    pg_hba[pg_hba.conf<br/>SCRAM-SHA-256<br/>loopback / Docker subnet rules]
+    tls[TLS Settings<br/>sslmode + cert paths]
+    owner[agent_owner<br/>schema owner]
+    app[agent_app<br/>read/write runtime]
+    readonly[agent_readonly<br/>SELECT only]
+    db[(PostgreSQL)]
+    rls[Forced RLS Policies<br/>*_app_rw + *_readonly]
+    backups[Encrypted Backups<br/>pg_dump | gzip | AES-256]
+    hosted[Hosted Database Controls<br/>pgAudit<br/>firewall/private networking<br/>encryption at rest]
+
+    migration -->|DATABASE_MIGRATION_URL| tls --> pg_hba --> owner
+    api_runtime -->|DATABASE_URL| tls --> pg_hba --> app
+    bi -->|read-only DSN| tls --> pg_hba --> readonly
+
+    owner -->|create/alter schema| db
+    app -->|SELECT/INSERT/UPDATE/DELETE| rls
+    readonly -->|SELECT| rls
+    rls --> db
+    db --> backups
+    db -. production / managed .-> hosted
+```
+
+## Security Effects On Schema State
+
+| State | Effect |
+| --- | --- |
+| Existing local schema before hardening | Tables/data remain in place. The local volume may need one-time role bootstrap and object ownership transfer before applying `0002_postgres_security`. |
+| Fresh schema after hardening | Roles are created during Postgres initialization. Tables are created by the owner role through `DATABASE_MIGRATION_URL`. |
+| After `0002_postgres_security` | All application tables have forced RLS, app read/write policies, read-only select policies, app/read-only grants, and public schema creation revoked. |
+| Future schema changes | New tables must receive forced RLS and role-specific policies before production traffic uses them. Runtime code should continue using the app role only. |
 
 ## Production Mapping
 
@@ -230,8 +297,8 @@ flowchart LR
     local_api[FastAPI Container] --> gcp_api[Cloud Run / GKE]
     local_api --> aws_api[ECS Fargate / EKS]
 
-    local_pg[PostgreSQL] --> gcp_pg[Cloud SQL PostgreSQL]
-    local_pg --> aws_pg[RDS PostgreSQL]
+    local_pg[PostgreSQL<br/>RLS + SCRAM + roles] --> gcp_pg[Cloud SQL PostgreSQL<br/>pgAudit + private IP + CMEK/at-rest encryption]
+    local_pg --> aws_pg[RDS PostgreSQL<br/>pgaudit extension + security groups + KMS encryption]
 
     local_kafka[Redpanda / Kafka] --> gcp_kafka[Confluent Cloud / PubSub Bridge]
     local_kafka --> aws_kafka[MSK / Confluent Cloud]
