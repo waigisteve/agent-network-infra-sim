@@ -60,7 +60,7 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
   );
 }
 
-function Dashboard({ session }: { session: Session }) {
+function Dashboard({ session, onLogout }: { session: Session; onLogout: () => void }) {
   const [view, setView] = useState("float");
   const nav = [
     ["float", "Float", Banknote],
@@ -76,6 +76,7 @@ function Dashboard({ session }: { session: Session }) {
         <div className="mark" />
         <h2>{session.user.full_name}</h2>
         <p>{session.user.role}</p>
+        <button onClick={onLogout}>Sign out</button>
         {nav.map(([id, label, Icon]) => (
           <button className={view === id ? "active" : ""} key={id} onClick={() => setView(id)}>
             <Icon size={18} /> {label}
@@ -109,6 +110,9 @@ function FloatView({ session }: { session: Session }) {
   return (
     <>
       <h1>Float Control & Reconciliation</h1>
+      {reconciliation.isLoading && <p>Loading reconciliation...</p>}
+      {reconciliation.error && <p className="error">Could not load reconciliation. Sign out and sign in again.</p>}
+      {requests.error && <p className="error">Could not load float requests. Sign out and sign in again.</p>}
       <div className="grid two">
         <table>
           <thead><tr><th>Agent</th><th>Field Agent</th><th>Cash In</th><th>Cash Out</th><th>Float Received</th><th>Balance Owed</th></tr></thead>
@@ -128,6 +132,8 @@ function ReportsView({ session }: { session: Session }) {
   return (
     <>
       <h1>Agent Network Dashboard</h1>
+      {report.isLoading && <p>Loading reports...</p>}
+      {report.error && <p className="error">Could not load reports. Sign out and sign in again.</p>}
       <div className="metrics">{report.data?.metrics.map((metric) => <article key={metric.label}><span>{metric.label}</span><b>{metric.label.includes("Rate") || metric.label.includes("Utilization") ? `${metric.value}%` : metric.value.toLocaleString()}</b><ResponsiveContainer height={90}><AreaChart data={metric.trend.map((value, index) => ({ index, value }))}><Area dataKey="value" stroke="#20c997" fill="#b9efe0" /></AreaChart></ResponsiveContainer></article>)}</div>
     </>
   );
@@ -170,14 +176,23 @@ function EventsView({ session }: { session: Session }) {
 function App() {
   const [session, setSession] = useState<Session | null>(() => {
     const stored = localStorage.getItem("session");
-    return stored ? JSON.parse(stored) : null;
+    if (!stored) return null;
+    try {
+      return JSON.parse(stored) as Session;
+    } catch {
+      localStorage.removeItem("session");
+      return null;
+    }
   });
   const login = (next: Session) => {
     localStorage.setItem("session", JSON.stringify(next));
     setSession(next);
   };
-  return session ? <Dashboard session={session} /> : <Login onLogin={login} />;
+  const logout = () => {
+    localStorage.removeItem("session");
+    setSession(null);
+  };
+  return session ? <Dashboard session={session} onLogout={logout} /> : <Login onLogin={login} />;
 }
 
 createRoot(document.getElementById("root")!).render(<QueryClientProvider client={new QueryClient()}><App /></QueryClientProvider>);
-
