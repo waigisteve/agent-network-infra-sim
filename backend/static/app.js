@@ -1,7 +1,28 @@
-const api = (path, options) => fetch(`/api/v1${path}`, {
-  headers: { "Content-Type": "application/json" },
-  ...options
+let tokenPromise;
+
+async function getToken() {
+  if (!tokenPromise) {
+    tokenPromise = fetch("/api/v1/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "admin@example.com", password: "password" })
+    }).then((response) => {
+      if (!response.ok) throw new Error(`Login failed: ${response.status}`);
+      return response.json();
+    }).then((session) => session.access_token);
+  }
+  return tokenPromise;
+}
+
+const api = async (path, options = {}) => fetch(`/api/v1${path}`, {
+  ...options,
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${await getToken()}`,
+    ...(options.headers || {})
+  }
 }).then((response) => {
+  if (response.status === 401) tokenPromise = undefined;
   if (!response.ok) throw new Error(`API failed: ${response.status}`);
   return response.json();
 });
@@ -236,4 +257,3 @@ document.querySelectorAll("[data-mobile]").forEach((button) => {
 });
 
 renderAll();
-
