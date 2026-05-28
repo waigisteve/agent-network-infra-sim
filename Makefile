@@ -1,4 +1,4 @@
-.PHONY: setup up down analytics orchestration dbt-build dbt-test migrate seed backup test lint frontend-test
+.PHONY: setup up down analytics orchestration dbt-build dbt-test migrate seed backup test lint frontend-test demo-e2e
 
 setup:
 	python3 -m venv .venv
@@ -37,6 +37,9 @@ simulate:
 
 simulate-partner-e2e:
 	docker compose exec -T api python -m backend.app.scripts.simulate_partner_e2e
+
+demo-e2e:
+	scripts/run_end_to_end_demo.sh
 
 test:
 	pytest -q

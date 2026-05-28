@@ -31,6 +31,8 @@ Open:
 - Frontend: `http://127.0.0.1:5173`
 - API docs: `http://127.0.0.1:8000/docs`
 - Redpanda Console: `http://127.0.0.1:18081`
+- Airflow: `http://127.0.0.1:18080`
+- Superset: `http://127.0.0.1:18088`
 
 ## Testing URLs
 
@@ -44,6 +46,8 @@ Browser and API endpoints use plain local HTTP, not HTTPS:
 - Health check: `http://127.0.0.1:8000/health`
 - Readiness check: `http://127.0.0.1:8000/ready`
 - Redpanda Console: `http://127.0.0.1:18081`
+- Airflow: `http://127.0.0.1:18080`
+- Superset: `http://127.0.0.1:18088`
 
 Non-HTTP service endpoints do not use `http://`:
 
@@ -69,6 +73,11 @@ Seed users all use password `password`:
 - `field@example.com`
 - `agent@example.com`
 
+Local Airflow and Superset bootstrap users also use:
+
+- username: `admin`
+- password: `password`
+
 ## Simulate Kafka Inputs
 
 Run a 10-minute simulation with one generated event every 2 seconds:
@@ -91,6 +100,30 @@ make dbt-build
 ```
 
 This loads a unique telco transaction feed, loads a unique bank settlement feed, opens a reconciliation result, and then builds the dbt marts used by Superset.
+
+## 15-Minute End-to-End Demo
+
+Run the full local process for 15 minutes:
+
+```bash
+make demo-e2e
+```
+
+The script starts the core, analytics, and orchestration Docker profiles; applies migrations; seeds deterministic data; builds dbt marts; bootstraps Superset dashboards; unpauses/triggers the Airflow DAG; runs continuous Kafka/event simulation; and repeatedly exercises the API endpoints used by the frontend.
+
+During the run, watch:
+
+- Frontend workflows: `http://127.0.0.1:5173`
+- API docs and endpoint responses: `http://127.0.0.1:8000/docs`
+- Kafka topics: `http://127.0.0.1:18081`
+- Airflow DAG runs: `http://127.0.0.1:18080`
+- Superset dashboards: `http://127.0.0.1:18088`
+
+Override the default timing when needed:
+
+```bash
+DURATION_SECONDS=300 ENDPOINT_INTERVAL_SECONDS=10 make demo-e2e
+```
 
 ## Partner Integration Simulation
 
@@ -143,6 +176,8 @@ End-to-end local flow:
 5. `make analytics`
 6. Open Superset at `http://127.0.0.1:18088` and connect it to the `analytics_marts` schema.
 
+For a fully automated local run, use `make demo-e2e`.
+
 ## Backend Test
 
 ```bash
@@ -179,3 +214,4 @@ Managed-platform controls:
 - [Database Security](docs/database-security.md)
 - [Opareta Role Alignment](docs/opareta-role-alignment.md)
 - [Data Platform Roadmap](docs/data-platform-roadmap.md)
+- [Implementation Process](docs/implementation-process.md)

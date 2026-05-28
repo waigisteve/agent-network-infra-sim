@@ -280,6 +280,114 @@ flowchart TB
     console --> redpanda
 ```
 
+## OLTP Architecture Diagram
+
+This view isolates the operational transaction-processing side: users, frontend workflows, FastAPI role checks, the runtime PostgreSQL role, forced RLS tables, Redpanda events, and the worker that keeps operational analytics snapshots current.
+
+```mermaid
+flowchart TB
+    admin[Admin User]
+    field[Field Agent]
+    agent[Mobile Money Agent]
+    kyc[KYC Reviewer]
+    frontend[React Frontend<br/>workflow screens]
+    api[FastAPI OLTP API<br/>JWT + role guards]
+    app_role[agent_app<br/>runtime DB role]
+    postgres[(PostgreSQL OLTP<br/>forced RLS)]
+    redpanda[Redpanda / Kafka]
+    worker[Worker<br/>event consumer]
+    backup[Encrypted logical backup]
+
+    subgraph Operational Tables
+        users[(users)]
+        agents[(agents)]
+        field_agents[(field_agents)]
+        customers[(customers)]
+        float_requests[(float_requests)]
+        transactions[(transactions)]
+        event_log[(event_log)]
+        analytics_snapshots[(analytics_snapshots)]
+        worker_errors[(worker_errors)]
+    end
+
+    admin --> frontend
+    field --> frontend
+    agent --> frontend
+    kyc --> frontend
+    frontend --> api
+    api -->|DATABASE_URL| app_role
+    app_role --> postgres
+    postgres --> users
+    postgres --> agents
+    postgres --> field_agents
+    postgres --> customers
+    postgres --> float_requests
+    postgres --> transactions
+    postgres --> event_log
+    postgres --> analytics_snapshots
+    postgres --> worker_errors
+    api -->|domain events| redpanda
+    api -->|audit event_log insert| event_log
+    redpanda --> worker
+    worker -->|snapshot updates| app_role
+    worker -->|processing failures| worker_errors
+    postgres --> backup
+```
+
+## Reporting Architecture Diagram
+
+This view isolates the reporting side: partner/telco/bank feeds, contract validation, integration audit tables, reconciliation, Airflow orchestration, dbt transformations, governed analytics schemas, and Superset dashboards.
+
+```mermaid
+flowchart TB
+    telco[Telco Feed<br/>Kafka/API sample]
+    bank[Bank Settlement Feed<br/>SFTP/API sample]
+    contracts[Versioned Contracts<br/>contracts/*.json]
+    api[FastAPI Integration API]
+    ingestion[Partner Ingestion Service<br/>validate + normalize]
+    reconciliation[Settlement Reconciliation<br/>exception queue]
+    airflow[Airflow DAG<br/>agent_network_partner_ingestion]
+    dbt[dbt Build<br/>staging -> intermediate -> marts]
+    superset[Superset BI<br/>partner dashboards]
+    readonly[agent_readonly<br/>governed BI role]
+    postgres[(PostgreSQL)]
+
+    subgraph Raw And Audit
+        partners[(partners)]
+        partner_contracts[(partner_contracts)]
+        integration_runs[(integration_runs)]
+        raw_partner_transactions[(raw_partner_transactions)]
+        bank_settlements[(bank_settlements)]
+        reconciliation_exceptions[(reconciliation_exceptions)]
+    end
+
+    subgraph Analytics Schemas
+        staging[(analytics_staging)]
+        intermediate[(analytics_intermediate)]
+        marts[(analytics_marts)]
+    end
+
+    telco --> api
+    bank --> api
+    contracts --> ingestion
+    api --> ingestion
+    ingestion --> partners
+    ingestion --> partner_contracts
+    ingestion --> integration_runs
+    ingestion --> raw_partner_transactions
+    ingestion --> bank_settlements
+    ingestion --> reconciliation
+    reconciliation --> reconciliation_exceptions
+    airflow --> api
+    airflow --> dbt
+    postgres --> dbt
+    dbt --> staging
+    dbt --> intermediate
+    dbt --> marts
+    readonly --> superset
+    superset --> marts
+```
+
 ## Request Data Flow
 
 ```mermaid
