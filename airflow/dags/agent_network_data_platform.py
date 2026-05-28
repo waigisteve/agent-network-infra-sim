@@ -121,7 +121,10 @@ with DAG(
     reconcile = PythonOperator(task_id="reconcile_bank_settlement", python_callable=reconcile_sample)
     dbt_build = BashOperator(
         task_id="dbt_build",
-        bash_command="cd /opt/airflow/dbt && dbt build --profiles-dir profiles",
+        bash_command=(
+            "cd /opt/airflow/dbt && "
+            "dbt build --profiles-dir profiles --log-path /tmp/dbt-logs --target-path /tmp/dbt-target"
+        ),
     )
 
     ready >> [telco, bank] >> reconcile >> dbt_build

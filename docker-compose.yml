@@ -122,9 +122,9 @@ services:
     profiles: ["orchestration"]
     env_file: .env
     environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_OWNER_USER}:${POSTGRES_OWNER_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
       AIRFLOW__WEBSERVER__SECRET_KEY: local-airflow-secret-change-me
       AIRFLOW_CONN_AGENT_NETWORK_API: http://api:8000
       DBT_PROFILES_DIR: /opt/airflow/dbt/profiles
@@ -134,8 +134,6 @@ services:
       - ./airflow/dags:/opt/airflow/dags
       - ./dbt:/opt/airflow/dbt
     depends_on:
-      postgres:
-        condition: service_healthy
       api:
         condition: service_started
     command: standalone

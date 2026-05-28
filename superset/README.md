@@ -44,6 +44,12 @@ Recommended datasets after dbt runs:
 - `analytics_marts.mart_liquidity_risk`
 - `analytics_intermediate.int_settlement_reconciliation`
 
+Bootstrap starter datasets, charts, and dashboards:
+
+```bash
+docker compose --profile analytics exec superset python /app/pythonpath/bootstrap_assets.py
+```
+
 ## Partner-Facing RLS
 
 For external dashboards, create partner-specific Superset roles and RLS filters:
