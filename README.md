@@ -8,6 +8,7 @@ It includes:
 - PostgreSQL persistence
 - Redpanda Kafka-compatible event streaming
 - Worker process for analytics snapshots
+- Named Kafka monitor consumers for analytics, fraud, liquidity, and reconciliation demo groups
 - Partner data contracts for telco transaction feeds and bank settlement files
 - Contract-backed ingestion run auditing and settlement reconciliation exceptions
 - dbt analytics project for staging, intermediate, fact, dimension, and mart models
@@ -91,6 +92,16 @@ Watch the stream in Redpanda Console:
 ```text
 http://127.0.0.1:18081
 ```
+
+The Redpanda Console groups page should show these local consumer groups when the stack is running:
+
+- `agent-network-worker`: application analytics snapshot worker
+- `analytics-worker`: reads transaction, commission, and float topics
+- `fraud-monitor`: reads transaction and KYC topics
+- `liquidity-monitor`: reads float and transaction topics
+- `reconciliation-monitor`: reads transaction and commission topics
+
+Open: `http://127.0.0.1:18081/groups`
 
 Run the partner integration simulation:
 

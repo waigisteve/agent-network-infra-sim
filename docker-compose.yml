@@ -85,6 +85,50 @@ services:
       - ./data:/app/data
       - ./contracts:/app/contracts
 
+  analytics-monitor:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file: .env
+    command: python -m backend.app.scripts.monitor_consumer --group-id analytics-worker --topics transaction-events,commission-events,float-events
+    depends_on:
+      - redpanda
+    volumes:
+      - ./backend:/app/backend
+
+  fraud-monitor:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file: .env
+    command: python -m backend.app.scripts.monitor_consumer --group-id fraud-monitor --topics transaction-events,kyc-events
+    depends_on:
+      - redpanda
+    volumes:
+      - ./backend:/app/backend
+
+  liquidity-monitor:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file: .env
+    command: python -m backend.app.scripts.monitor_consumer --group-id liquidity-monitor --topics float-events,transaction-events
+    depends_on:
+      - redpanda
+    volumes:
+      - ./backend:/app/backend
+
+  reconciliation-monitor:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file: .env
+    command: python -m backend.app.scripts.monitor_consumer --group-id reconciliation-monitor --topics transaction-events,commission-events
+    depends_on:
+      - redpanda
+    volumes:
+      - ./backend:/app/backend
+
   frontend:
     build:
       context: .

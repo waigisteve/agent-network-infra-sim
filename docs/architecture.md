@@ -58,6 +58,7 @@ Use Postgres `jsonb` plus GIN indexes for `event_log.payload` and `analytics_sna
 - PostgreSQL operational database.
 - Redpanda Kafka-compatible broker for domain events.
 - Worker process for analytics materialization and future stream consumers.
+- Named Kafka monitor consumers for analytics, fraud, liquidity, and reconciliation visibility in Redpanda Console.
 - Alembic migrations for schema changes.
 - Partner feed contracts and ingestion audit tables for telco/bank integration simulation.
 - Reconciliation exception workflow for settlement mismatches.
@@ -103,6 +104,10 @@ flowchart TB
     managed_controls[Hosted Controls<br/>pgAudit + firewall/private network<br/>encryption at rest]
     redpanda[Redpanda<br/>Kafka-compatible Broker]
     worker[Background Worker<br/>Event Consumer + Analytics Jobs]
+    analytics_monitor[analytics-worker<br/>transaction + commission + float topics]
+    fraud_monitor[fraud-monitor<br/>transaction + KYC topics]
+    liquidity_monitor[liquidity-monitor<br/>float + transaction topics]
+    reconciliation_monitor[reconciliation-monitor<br/>transaction + commission topics]
     contracts[Partner Contracts<br/>contracts/*.json]
     ingestion[Partner Ingestion Service<br/>validation + run audit]
     reconciliation_flow[Settlement Reconciliation<br/>exception queue]
@@ -275,6 +280,10 @@ flowchart TB
     superset --> marts
     superset -. partner RLS .-> readonly_role
     redpanda --> worker
+    redpanda --> analytics_monitor
+    redpanda --> fraud_monitor
+    redpanda --> liquidity_monitor
+    redpanda --> reconciliation_monitor
     worker --> analytics_tbl
     worker --> worker_errors_tbl
     console --> redpanda
