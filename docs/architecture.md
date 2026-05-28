@@ -25,6 +25,9 @@ The operational tables, audit tables, worker tables, and reporting tables are in
 - `event_log.agent_id`, `event_log.customer_id`, `event_log.float_request_id`, and `event_log.transaction_id` provide direct relational links for common event queries.
 - `worker_errors.event_id` links failed consumer processing back to the event that failed.
 - `analytics_snapshots.scope`, `agent_id`, and `field_agent_id` support network-wide, agent-level, and field-agent-level reporting.
+- `partners`, `partner_contracts`, and `integration_runs` document external telco/bank feeds, expected schema, data freshness SLA, source reference, load status, and rejection counts.
+- `raw_partner_transactions` stores normalized telco transaction records with hashed customer identifiers and immutable raw payloads for replay/reconciliation.
+- `bank_settlements` and `reconciliation_exceptions` model bank/telco settlement matching and the exception queue that data/ops teams must clear.
 
 Customer-facing and reporting outputs mask customer PII at the API boundary. The database keeps the source values for regulated operations, while API responses from customer, transaction, report, and event-audit endpoints mask customer names, phone numbers, national IDs, birthdays, and addresses.
 
@@ -40,6 +43,11 @@ The schema includes indexes for the expected high-volume filters:
 - Event audit: `event_log.topic + created_at`, `event_log.name + created_at`, `event_log.aggregate_type + aggregate_id`, plus entity FK indexes.
 - Analytics: `analytics_snapshots.scope + snapshot_date`, `analytics_snapshots.agent_id + snapshot_date`, `analytics_snapshots.field_agent_id + snapshot_date`.
 - Worker failures: `worker_errors.source + created_at`.
+- Partner metadata: `partners.partner_type + country`, active contract lookup, and integration mode.
+- Integration observability: `integration_runs.partner_id + started_at`, `integration_runs.status + started_at`, and unique partner/feed/source references.
+- Telco raw feeds: unique partner/provider references plus partner/date and agent/date access paths.
+- Bank settlements: unique partner/settlement references and partner/date reporting.
+- Reconciliation exceptions: partner/status and exception type/created date filters.
 
 Use Postgres `jsonb` plus GIN indexes for `event_log.payload` and `analytics_snapshots.metrics` only when production queries need to search inside those JSON documents frequently.
 
@@ -51,6 +59,11 @@ Use Postgres `jsonb` plus GIN indexes for `event_log.payload` and `analytics_sna
 - Redpanda Kafka-compatible broker for domain events.
 - Worker process for analytics materialization and future stream consumers.
 - Alembic migrations for schema changes.
+- Partner feed contracts and ingestion audit tables for telco/bank integration simulation.
+- Reconciliation exception workflow for settlement mismatches.
+- dbt analytics project for staging, intermediate, fact, dimension, and mart models.
+- Optional Airflow service for ingestion/reconciliation/dbt orchestration.
+- Optional Superset service for governed dashboards and partner-facing RLS.
 - Database security controls: owner/app/read-only PostgreSQL roles, SCRAM-SHA-256 authentication, `pg_hba.conf` network rules, forced RLS policies, encrypted logical backups, and hosted pgAudit/encryption-at-rest requirements.
 
 ## Data Flow
@@ -61,6 +74,10 @@ Use Postgres `jsonb` plus GIN indexes for `event_log.payload` and `analytics_sna
 4. Each event is also stored in `event_log` for auditability.
 5. Redpanda carries the stream for worker consumers.
 6. Worker materializes analytics snapshots for dashboard/reporting workflows.
+7. Partner feeds are validated against versioned contracts, loaded into raw integration tables, and reconciled against settlement totals.
+8. Airflow orchestrates partner ingestion, reconciliation, and dbt builds when the `orchestration` profile is enabled.
+9. dbt transforms operational/integration tables into governed analytics marts.
+10. Superset connects to mart schemas for internal dashboards and partner-scoped reporting.
 
 ## Full Architecture Diagram
 
@@ -70,6 +87,8 @@ flowchart TB
     user_field[Field Agent]
     user_agent[Mobile Agent]
     user_kyc[KYC Reviewer]
+    telco_partner[Telco Partner Feed<br/>Kafka/API]
+    bank_partner[Bank Partner Feed<br/>SFTP Settlement]
 
     frontend[React / Vite Frontend<br/>http://127.0.0.1:5173]
     api[FastAPI Backend<br/>/api/v1<br/>JWT Auth + Role Guards]
@@ -84,6 +103,13 @@ flowchart TB
     managed_controls[Hosted Controls<br/>pgAudit + firewall/private network<br/>encryption at rest]
     redpanda[Redpanda<br/>Kafka-compatible Broker]
     worker[Background Worker<br/>Event Consumer + Analytics Jobs]
+    contracts[Partner Contracts<br/>contracts/*.json]
+    ingestion[Partner Ingestion Service<br/>validation + run audit]
+    reconciliation_flow[Settlement Reconciliation<br/>exception queue]
+    airflow[Airflow<br/>http://127.0.0.1:18080]
+    dbt[dbt Project<br/>staging + marts]
+    superset[Superset BI<br/>http://127.0.0.1:18088]
+    marts[(dbt Analytics Schemas<br/>analytics_staging<br/>analytics_intermediate<br/>analytics_marts)]
     console[Redpanda Console<br/>http://127.0.0.1:18081]
     docs[API Docs<br/>/docs]
 
@@ -119,6 +145,12 @@ flowchart TB
         event_tbl[(event_log<br/>RLS forced)]
         analytics_tbl[(analytics_snapshots<br/>RLS forced)]
         worker_errors_tbl[(worker_errors<br/>RLS forced)]
+        partners_tbl[(partners<br/>RLS forced)]
+        contracts_tbl[(partner_contracts<br/>RLS forced)]
+        runs_tbl[(integration_runs<br/>RLS forced)]
+        raw_partner_tx_tbl[(raw_partner_transactions<br/>RLS forced)]
+        settlements_tbl[(bank_settlements<br/>RLS forced)]
+        recon_tbl[(reconciliation_exceptions<br/>RLS forced)]
     end
 
     subgraph Kafka Topics
@@ -133,6 +165,10 @@ flowchart TB
     user_field --> frontend
     user_agent --> frontend
     user_kyc --> frontend
+    telco_partner --> redpanda
+    telco_partner --> ingestion
+    bank_partner --> ingestion
+    contracts --> ingestion
 
     frontend --> login
     frontend --> float_ui
@@ -164,6 +200,10 @@ flowchart TB
     api --> reports_api
     api --> map_api
     api --> events_api
+    api --> ingestion
+    ingestion --> reconciliation_flow
+    airflow --> ingestion
+    airflow --> dbt
 
     auth --> users_tbl
     agents_api --> app_role
@@ -185,6 +225,13 @@ flowchart TB
     postgres --> event_tbl
     postgres --> analytics_tbl
     postgres --> worker_errors_tbl
+    postgres --> partners_tbl
+    postgres --> contracts_tbl
+    postgres --> runs_tbl
+    postgres --> raw_partner_tx_tbl
+    postgres --> settlements_tbl
+    postgres --> recon_tbl
+    postgres --> marts
 
     tx_tbl -->|customer_id| customers_tbl
     event_tbl -->|agent_id| agents_tbl
@@ -194,6 +241,16 @@ flowchart TB
     worker_errors_tbl -->|event_id| event_tbl
     analytics_tbl -->|agent_id| agents_tbl
     analytics_tbl -->|field_agent_id| field_agents_tbl
+    contracts_tbl -->|partner_id| partners_tbl
+    runs_tbl -->|partner_id| partners_tbl
+    runs_tbl -->|contract_id| contracts_tbl
+    raw_partner_tx_tbl -->|partner_id| partners_tbl
+    raw_partner_tx_tbl -->|integration_run_id| runs_tbl
+    raw_partner_tx_tbl -->|agent_id| agents_tbl
+    settlements_tbl -->|partner_id| partners_tbl
+    settlements_tbl -->|integration_run_id| runs_tbl
+    recon_tbl -->|partner_id| partners_tbl
+    recon_tbl -->|integration_run_id| runs_tbl
 
     float_api -->|float.requested / approved / rejected / disbursed| redpanda
     tx_api -->|transaction.created| redpanda
@@ -208,6 +265,15 @@ flowchart TB
     redpanda --> commission_events
 
     api -->|also persists every event| event_tbl
+    ingestion --> partners_tbl
+    ingestion --> contracts_tbl
+    ingestion --> runs_tbl
+    ingestion --> raw_partner_tx_tbl
+    ingestion --> settlements_tbl
+    reconciliation_flow --> recon_tbl
+    dbt --> marts
+    superset --> marts
+    superset -. partner RLS .-> readonly_role
     redpanda --> worker
     worker --> analytics_tbl
     worker --> worker_errors_tbl

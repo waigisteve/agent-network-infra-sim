@@ -1,0 +1,69 @@
+dashboards:
+  - title: Partner Network Health
+    dataset: analytics_marts.mart_partner_network_health
+    audience: external_partner
+    rls_column: partner_id
+    charts:
+      - title: Transaction Value
+        metric: sum(transaction_value)
+        visualization: big_number
+      - title: Transaction Volume
+        metric: sum(transaction_volume)
+        visualization: big_number
+      - title: Failed Transactions
+        metric: sum(failed_transactions)
+        visualization: big_number
+      - title: Active Agents
+        metric: sum(active_agents)
+        visualization: big_number
+      - title: Partner Table
+        columns:
+          - partner_code
+          - country
+          - transaction_volume
+          - transaction_value
+          - failed_transactions
+          - latest_loaded_at
+        visualization: table
+  - title: Agent Liquidity Risk
+    dataset: analytics_marts.mart_liquidity_risk
+    audience: internal_operations
+    charts:
+      - title: High Risk Agents
+        metric: count(agent_id)
+        filter: liquidity_risk = 'high'
+        visualization: big_number
+      - title: Liquidity Risk By Region
+        dimensions:
+          - region
+          - liquidity_risk
+        metric: count(agent_id)
+        visualization: bar
+      - title: Agent Liquidity Table
+        columns:
+          - agent_id
+          - agent_name
+          - region
+          - float_balance
+          - cash_balance
+          - recent_transaction_volume
+          - liquidity_risk
+        visualization: table
+  - title: Reconciliation Exceptions
+    dataset: analytics_intermediate.int_settlement_reconciliation
+    audience: data_operations
+    charts:
+      - title: Exceptions
+        metric: count(settlement_id)
+        filter: reconciliation_status = 'exception'
+        visualization: big_number
+      - title: Settlement Mismatch Table
+        columns:
+          - settlement_reference
+          - settlement_date
+          - settlement_transaction_count
+          - raw_transaction_count
+          - settlement_gross_amount
+          - raw_gross_amount
+          - reconciliation_status
+        visualization: table

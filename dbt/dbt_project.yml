@@ -1,0 +1,21 @@
+name: agent_network_analytics
+version: "1.0.0"
+config-version: 2
+
+profile: agent_network_analytics
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+
+models:
+  agent_network_analytics:
+    staging:
+      +materialized: view
+      +schema: analytics_staging
+    intermediate:
+      +materialized: view
+      +schema: analytics_intermediate
+    marts:
+      +materialized: table
+      +schema: analytics_marts

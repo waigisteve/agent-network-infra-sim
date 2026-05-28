@@ -39,6 +39,7 @@ psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
   --set app_user="$POSTGRES_APP_USER" \
   --set readonly_user="$POSTGRES_READONLY_USER" <<'SQL'
 GRANT CONNECT ON DATABASE :"db_name" TO :"owner_user", :"app_user", :"readonly_user";
+GRANT CREATE ON DATABASE :"db_name" TO :"owner_user";
 GRANT CREATE, USAGE ON SCHEMA public TO :"owner_user";
 GRANT USAGE ON SCHEMA public TO :"app_user", :"readonly_user";
 ALTER DEFAULT PRIVILEGES FOR ROLE :"owner_user" IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO :"app_user";

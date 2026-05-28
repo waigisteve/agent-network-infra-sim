@@ -32,7 +32,7 @@ The API and worker should use `DATABASE_URL`. Migration commands should use `DAT
 | Control | Implementation | Effect |
 | --- | --- | --- |
 | RBAC and least privilege | Separate owner, app, and read-only roles in `docker/postgres/init/001-security-roles.sh` | Runtime credentials cannot perform schema ownership operations. Read-only credentials cannot mutate data. |
-| Row-Level Security | `backend/alembic/versions/0002_postgres_security.py` enables and forces RLS on all application tables | Every table is RLS-protected. Current policies allow full app-role access and read-only select access; future tenant/agent-specific predicates can replace broad policies without changing table ownership. |
+| Row-Level Security | `backend/alembic/versions/0002_postgres_security.py` secures the original application tables; `backend/alembic/versions/0003_partner_integrations.py` applies the same controls to partner integration tables | Every application and integration table is RLS-protected. Current policies allow full app-role access and read-only select access; future tenant/agent/partner-specific predicates can replace broad policies without changing table ownership. |
 | pgAudit | Documented as a managed-platform/custom-image requirement | Requires `shared_preload_libraries = 'pgaudit'` and provider support. The stock `postgres:16` image does not include pgAudit by default. |
 | SCRAM-SHA-256 authentication | `password_encryption=scram-sha-256` and `pg_hba.conf` network rules | New role passwords are SCRAM-hashed and network clients must authenticate with password auth. |
 | Network restriction | Postgres binds to `127.0.0.1:${POSTGRES_HOST_PORT:-55432}` and uses `docker/postgres/pg_hba.conf` | Database is not exposed on public interfaces in local Docker. Hosted databases should also use firewall rules/private networking. |
@@ -47,6 +47,7 @@ Fresh schema state:
 - The Postgres container creates owner, app, and read-only roles during first initialization.
 - Alembic should run with `DATABASE_MIGRATION_URL`, so tables are owned by the owner role.
 - `0002_postgres_security` enables forced RLS, creates two policies per table, grants app-role read/write access, grants read-only select access, and revokes public schema creation.
+- `0003_partner_integrations` creates partner, contract, ingestion-run, raw-feed, settlement, and reconciliation-exception tables. It also enables forced RLS and grants app/read-only access for those new tables in the same migration.
 
 Existing local schema state:
 
@@ -58,7 +59,7 @@ Existing local schema state:
 Future schema changes:
 
 - New migrations should run only through `DATABASE_MIGRATION_URL`.
-- New tables should be added to the `TABLES` list in `0002_postgres_security.py` or covered by a follow-up migration that enables forced RLS and grants role-specific access.
+- New tables should be covered in the same migration that creates them or by a follow-up migration that enables forced RLS and grants role-specific access.
 - Runtime code should not require owner credentials.
 
 ## Local Validation Commands

@@ -23,13 +23,17 @@ from backend.app.models import (
     FloatReviewRequest,
     KycReviewRequest,
     LoginRequest,
+    PartnerFeedIngestionRequest,
+    PartnerORM,
     Role,
+    SettlementReconciliationRequest,
     TokenResponse,
     TransactionCreate,
     TransactionORM,
     UserORM,
 )
 from backend.app.services.float_ops import approve_float_request, reconciliation, reject_float_request
+from backend.app.services.partner_ingestion import ingest_bank_settlements, ingest_telco_transactions, reconcile_partner_settlement
 from backend.app.services.transactions import create_transaction
 
 router = APIRouter()
@@ -325,3 +329,76 @@ async def events(
         }
         for event in db.scalars(select(EventLogORM).order_by(EventLogORM.created_at.desc())).all()
     ]
+
+
+@router.get("/partners")
+async def partners(
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserORM, Depends(require_roles(Role.admin, Role.field_agent))],
+) -> list[dict[str, object]]:
+    return [
+        {
+            "id": partner.id,
+            "code": partner.code,
+            "name": partner.name,
+            "partner_type": partner.partner_type,
+            "country": partner.country,
+            "integration_mode": partner.integration_mode,
+            "data_freshness_sla_minutes": partner.data_freshness_sla_minutes,
+            "is_active": partner.is_active,
+        }
+        for partner in db.scalars(select(PartnerORM)).all()
+    ]
+
+
+@router.post("/integrations/telco-transactions")
+async def ingest_telco_transaction_feed(
+    request: PartnerFeedIngestionRequest,
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserORM, Depends(require_roles(Role.admin))],
+) -> dict[str, object]:
+    run = ingest_telco_transactions(db, request.contract_name, request.source_reference, request.records)
+    return {
+        "id": run.id,
+        "partner_id": run.partner_id,
+        "feed_name": run.feed_name,
+        "status": run.status,
+        "records_received": run.records_received,
+        "records_loaded": run.records_loaded,
+        "records_rejected": run.records_rejected,
+        "error_summary": run.error_summary,
+    }
+
+
+@router.post("/integrations/bank-settlements")
+async def ingest_bank_settlement_feed(
+    request: PartnerFeedIngestionRequest,
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserORM, Depends(require_roles(Role.admin))],
+) -> dict[str, object]:
+    run = ingest_bank_settlements(db, request.contract_name, request.source_reference, request.records)
+    return {
+        "id": run.id,
+        "partner_id": run.partner_id,
+        "feed_name": run.feed_name,
+        "status": run.status,
+        "records_received": run.records_received,
+        "records_loaded": run.records_loaded,
+        "records_rejected": run.records_rejected,
+        "error_summary": run.error_summary,
+    }
+
+
+@router.post("/integrations/reconcile-settlement")
+async def reconcile_settlement(
+    request: SettlementReconciliationRequest,
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserORM, Depends(require_roles(Role.admin))],
+) -> dict[str, object]:
+    try:
+        exception = reconcile_partner_settlement(db, request.partner_id, request.settlement_reference)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if exception is None:
+        return {"status": "matched", "exception": None}
+    return {"status": "exception", "exception": {"id": exception.id, "type": exception.exception_type, "evidence": exception.evidence}}

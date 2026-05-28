@@ -160,3 +160,93 @@ def test_role_permissions_block_unauthorized_actions() -> None:
     agent_token = login("agent@example.com")
     response = request("POST", "/api/v1/float/requests/fr_001/approve", token=agent_token, json={"reviewer": "agent"})
     assert response.status_code == 403
+
+
+def test_partner_contracts_seed_and_partner_listing() -> None:
+    response = request("GET", "/api/v1/partners", token=login())
+    assert response.status_code == 200
+    assert {"TELCO_A_UG", "BANK_B_UG"}.issubset({partner["code"] for partner in response.json()})
+
+
+def test_telco_transaction_ingestion_validates_contract_and_hashes_pii() -> None:
+    token = login()
+    response = request(
+        "POST",
+        "/api/v1/integrations/telco-transactions",
+        token=token,
+        json={
+            "contract_name": "telco_transactions_v1",
+            "source_reference": "kafka-offset-100",
+            "records": [
+                {
+                    "provider_reference": "telco-ref-001",
+                    "agent_id": "agent_neema",
+                    "customer_msisdn": "256770000001",
+                    "transaction_type": "DEPOSIT",
+                    "amount": 2500,
+                    "commission": 30,
+                    "status": "SUCCESS",
+                    "created_at": "2026-05-28T08:00:00+00:00",
+                }
+            ],
+        },
+    )
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["status"] == "loaded"
+    assert payload["records_loaded"] == 1
+    assert payload["records_rejected"] == 0
+
+
+def test_bank_settlement_reconciliation_creates_exception_for_mismatch() -> None:
+    token = login()
+    request(
+        "POST",
+        "/api/v1/integrations/telco-transactions",
+        token=token,
+        json={
+            "contract_name": "telco_transactions_v1",
+            "source_reference": "kafka-offset-101",
+            "records": [
+                {
+                    "provider_reference": "telco-ref-002",
+                    "agent_id": "agent_neema",
+                    "customer_msisdn": "256770000002",
+                    "transaction_type": "WITHDRAWAL",
+                    "amount": 1000,
+                    "commission": 12,
+                    "status": "SUCCESS",
+                    "created_at": "2026-05-28T08:05:00+00:00",
+                }
+            ],
+        },
+    )
+    settlement = request(
+        "POST",
+        "/api/v1/integrations/bank-settlements",
+        token=token,
+        json={
+            "contract_name": "bank_settlements_v1",
+            "source_reference": "sftp-bank-b-2026-05-28.csv",
+            "records": [
+                {
+                    "settlement_reference": "bank-settle-001",
+                    "settlement_date": "2026-05-28",
+                    "transaction_count": 2,
+                    "gross_amount": 9999,
+                    "commission_amount": 12,
+                    "currency": "UGX",
+                }
+            ],
+        },
+    )
+    response = request(
+        "POST",
+        "/api/v1/integrations/reconcile-settlement",
+        token=token,
+        json={"partner_id": settlement.json()["partner_id"], "settlement_reference": "bank-settle-001"},
+    )
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["status"] == "exception"
+    assert payload["exception"]["type"] == "settlement_mismatch"

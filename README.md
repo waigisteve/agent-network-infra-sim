@@ -8,6 +8,11 @@ It includes:
 - PostgreSQL persistence
 - Redpanda Kafka-compatible event streaming
 - Worker process for analytics snapshots
+- Partner data contracts for telco transaction feeds and bank settlement files
+- Contract-backed ingestion run auditing and settlement reconciliation exceptions
+- dbt analytics project for staging, intermediate, fact, dimension, and mart models
+- Optional Airflow orchestration profile for ingestion, reconciliation, and dbt builds
+- Optional Superset analytics profile for governed BI dashboards
 - React/Vite frontend
 - JWT role-based auth
 - Alembic migrations
@@ -78,6 +83,66 @@ Watch the stream in Redpanda Console:
 http://127.0.0.1:18081
 ```
 
+Run the partner integration simulation:
+
+```bash
+make simulate-partner-e2e
+make dbt-build
+```
+
+This loads a unique telco transaction feed, loads a unique bank settlement feed, opens a reconciliation result, and then builds the dbt marts used by Superset.
+
+## Partner Integration Simulation
+
+The repo includes versioned partner contracts that model telco and bank integrations:
+
+- `contracts/telco_transactions_v1.json`
+- `contracts/bank_settlements_v1.json`
+
+Seed data creates the partner and contract metadata. Admin users can ingest sample records through:
+
+- `POST /api/v1/integrations/telco-transactions`
+- `POST /api/v1/integrations/bank-settlements`
+- `POST /api/v1/integrations/reconcile-settlement`
+
+The ingestion layer records source references, loaded/rejected counts, error summaries, hashed customer identifiers, raw payloads, settlement totals, and reconciliation exceptions. This is the local implementation path for telco/bank feeds before adding Airflow, dbt, Superset, BigQuery, or Redshift.
+
+## Analytics Stack
+
+Start optional analytics services:
+
+```bash
+make analytics
+```
+
+Run dbt locally through Docker:
+
+```bash
+make dbt-build
+```
+
+Start optional Airflow orchestration:
+
+```bash
+make orchestration
+```
+
+Open:
+
+- Airflow: `http://127.0.0.1:18080`
+- Superset: `http://127.0.0.1:18088`
+
+The dbt project lives in `dbt/` and builds marts such as `mart_partner_network_health` and `mart_liquidity_risk`. Airflow DAGs live in `airflow/dags/`. Superset local configuration lives in `superset/`.
+
+End-to-end local flow:
+
+1. `make up`
+2. `docker compose exec -T api alembic -c backend/alembic.ini upgrade head`
+3. `make simulate-partner-e2e`
+4. `make dbt-build`
+5. `make analytics`
+6. Open Superset at `http://127.0.0.1:18088` and connect it to the `analytics_marts` schema.
+
 ## Backend Test
 
 ```bash
@@ -112,3 +177,5 @@ Managed-platform controls:
 - [Architecture](docs/architecture.md)
 - [API](docs/api.md)
 - [Database Security](docs/database-security.md)
+- [Opareta Role Alignment](docs/opareta-role-alignment.md)
+- [Data Platform Roadmap](docs/data-platform-roadmap.md)

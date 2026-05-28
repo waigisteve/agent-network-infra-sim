@@ -12,15 +12,22 @@ from backend.app.db import SessionLocal, create_all
 from backend.app.models import (
     AgentORM,
     AnalyticsSnapshotORM,
+    BankSettlementORM,
     CustomerORM,
     EventLogORM,
     FieldAgentORM,
     FloatRequestORM,
+    IntegrationRunORM,
+    PartnerContractORM,
+    PartnerORM,
+    RawPartnerTransactionORM,
+    ReconciliationExceptionORM,
     Role,
     TransactionORM,
     UserORM,
     WorkerErrorORM,
 )
+from backend.app.services.partner_ingestion import ensure_partner_contract
 
 
 def seed_path() -> Path:
@@ -28,7 +35,23 @@ def seed_path() -> Path:
 
 
 def clear(db: Session) -> None:
-    for model in (WorkerErrorORM, AnalyticsSnapshotORM, EventLogORM, TransactionORM, FloatRequestORM, CustomerORM, UserORM, AgentORM, FieldAgentORM):
+    for model in (
+        ReconciliationExceptionORM,
+        BankSettlementORM,
+        RawPartnerTransactionORM,
+        IntegrationRunORM,
+        PartnerContractORM,
+        PartnerORM,
+        WorkerErrorORM,
+        AnalyticsSnapshotORM,
+        EventLogORM,
+        TransactionORM,
+        FloatRequestORM,
+        CustomerORM,
+        UserORM,
+        AgentORM,
+        FieldAgentORM,
+    ):
         db.execute(delete(model))
 
 
@@ -62,6 +85,8 @@ def seed(db: Session) -> None:
             UserORM(id="user_agent", email="agent@example.com", full_name="Neema Diallo", password_hash=hash_password("password"), role=Role.agent, agent_id="agent_neema"),
         ]
     )
+    ensure_partner_contract(db, "telco_transactions_v1")
+    ensure_partner_contract(db, "bank_settlements_v1")
     db.commit()
 
 

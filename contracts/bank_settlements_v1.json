@@ -1,0 +1,31 @@
+{
+  "partner": {
+    "code": "BANK_B_UG",
+    "name": "Bank B Uganda",
+    "partner_type": "bank",
+    "country": "Uganda",
+    "integration_mode": "sftp",
+    "data_freshness_sla_minutes": 1440
+  },
+  "feed": {
+    "name": "settlements",
+    "version": "v1",
+    "arrival_sla": "daily by 07:00 Africa/Kampala",
+    "dedupe_key": ["partner.code", "settlement_reference"],
+    "pii_fields": [],
+    "fields": [
+      {"name": "settlement_reference", "type": "string", "required": true},
+      {"name": "settlement_date", "type": "date", "required": true},
+      {"name": "transaction_count", "type": "integer", "required": true},
+      {"name": "gross_amount", "type": "integer", "required": true},
+      {"name": "commission_amount", "type": "integer", "required": false},
+      {"name": "currency", "type": "string", "required": true, "accepted_values": ["UGX", "KES", "SLL", "ZMW"]}
+    ]
+  },
+  "governance": {
+    "owner": "data-platform",
+    "classification": "restricted-financial",
+    "raw_retention_days": 2555,
+    "notes": "Settlement totals are used to reconcile partner financial records against successful transaction feeds."
+  }
+}

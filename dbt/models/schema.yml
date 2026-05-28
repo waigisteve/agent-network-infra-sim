@@ -1,0 +1,55 @@
+version: 2
+
+models:
+  - name: dim_agents
+    columns:
+      - name: agent_id
+        tests:
+          - unique
+          - not_null
+  - name: dim_partners
+    columns:
+      - name: partner_id
+        tests:
+          - unique
+          - not_null
+      - name: partner_type
+        tests:
+          - accepted_values:
+              values: ["telco", "bank", "agent_app"]
+  - name: fact_transactions
+    columns:
+      - name: transaction_key
+        tests:
+          - unique
+          - not_null
+      - name: partner_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_partners')
+              field: partner_id
+      - name: agent_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_agents')
+              field: agent_id
+      - name: transaction_status
+        tests:
+          - accepted_values:
+              values: ["SUCCESS", "FAILED", "REVERSED", "PENDING"]
+      - name: transaction_type
+        tests:
+          - accepted_values:
+              values: ["DEPOSIT", "WITHDRAWAL", "BILL_PAYMENT", "FLOAT_TOPUP"]
+  - name: int_settlement_reconciliation
+    columns:
+      - name: settlement_id
+        tests:
+          - unique
+          - not_null
+      - name: reconciliation_status
+        tests:
+          - accepted_values:
+              values: ["matched", "exception"]

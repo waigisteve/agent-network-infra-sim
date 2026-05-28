@@ -1,0 +1,15 @@
+version: 2
+
+sources:
+  - name: app
+    schema: public
+    tables:
+      - name: agents
+      - name: field_agents
+      - name: partners
+      - name: integration_runs
+      - name: raw_partner_transactions
+      - name: bank_settlements
+      - name: reconciliation_exceptions
+      - name: transactions
+      - name: float_requests

@@ -69,6 +69,7 @@ services:
     volumes:
       - ./backend:/app/backend
       - ./data:/app/data
+      - ./contracts:/app/contracts
 
   worker:
     build:
@@ -82,6 +83,7 @@ services:
     volumes:
       - ./backend:/app/backend
       - ./data:/app/data
+      - ./contracts:/app/contracts
 
   frontend:
     build:
@@ -97,5 +99,63 @@ services:
     depends_on:
       - api
 
+  dbt:
+    image: ghcr.io/dbt-labs/dbt-postgres:1.8.2
+    profiles: ["analytics"]
+    working_dir: /usr/app
+    env_file: .env
+    environment:
+      DBT_PROFILES_DIR: /usr/app/profiles
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+    volumes:
+      - ./dbt:/usr/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["run"]
+
+  airflow:
+    build:
+      context: .
+      dockerfile: airflow/Dockerfile
+    profiles: ["orchestration"]
+    env_file: .env
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_OWNER_USER}:${POSTGRES_OWNER_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      AIRFLOW__WEBSERVER__SECRET_KEY: local-airflow-secret-change-me
+      AIRFLOW_CONN_AGENT_NETWORK_API: http://api:8000
+      DBT_PROFILES_DIR: /opt/airflow/dbt/profiles
+    ports:
+      - "18080:8080"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./dbt:/opt/airflow/dbt
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    command: standalone
+
+  superset:
+    image: apache/superset:4.0.2
+    profiles: ["analytics"]
+    env_file: .env
+    environment:
+      SUPERSET_SECRET_KEY: local-superset-secret-change-me
+      SUPERSET_CONFIG_PATH: /app/pythonpath/superset_config.py
+    ports:
+      - "18088:8088"
+    volumes:
+      - ./superset:/app/pythonpath
+      - superset-home:/app/superset_home
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres-data:
+  superset-home:

@@ -17,6 +17,27 @@ Enum float_request_status {
   rejected
 }
 
+Enum partner_type {
+  telco
+  bank
+  agent_app
+}
+
+Enum integration_mode {
+  kafka
+  sftp
+  api
+  database_replica
+}
+
+Enum integration_run_status {
+  received
+  validated
+  loaded
+  reconciled
+  failed
+}
+
 TableGroup "PostgreSQL security controls" {
   users
   field_agents
@@ -27,6 +48,20 @@ TableGroup "PostgreSQL security controls" {
   event_log
   analytics_snapshots
   worker_errors
+  partners
+  partner_contracts
+  integration_runs
+  raw_partner_transactions
+  bank_settlements
+  reconciliation_exceptions
+}
+
+TableGroup "dbt analytics marts" {
+  dim_agents
+  dim_partners
+  fact_partner_transactions
+  mart_partner_network_health
+  mart_liquidity_risk
 }
 
 Note: '''
@@ -216,6 +251,210 @@ Table worker_errors [note: 'Forced RLS. Policies: worker_errors_app_rw for agent
   }
 }
 
+Table partners [note: 'Forced RLS. External telco, bank, or agent-app source. Captures country, integration mode, freshness SLA, and active state.'] {
+  id varchar(64) [pk]
+  code varchar(64) [unique, not null]
+  name varchar(255) [not null]
+  partner_type partner_type [not null]
+  country varchar(64) [not null]
+  integration_mode integration_mode [not null]
+  data_freshness_sla_minutes integer [not null]
+  is_active boolean [not null]
+  created_at timestamp [not null]
+
+  indexes {
+    code [unique]
+    partner_type
+    country
+    integration_mode
+    is_active
+    (partner_type, country)
+  }
+}
+
+Table partner_contracts [note: 'Forced RLS. Versioned feed contract for required fields, accepted values, dedupe keys, PII fields, and arrival SLA.'] {
+  id varchar(64) [pk]
+  partner_id varchar(64) [not null]
+  feed_name varchar(128) [not null]
+  version varchar(32) [not null]
+  schema_contract json [not null]
+  pii_fields json [not null]
+  dedupe_key json [not null]
+  arrival_sla varchar(64) [not null]
+  is_active boolean [not null]
+  created_at timestamp [not null]
+
+  indexes {
+    partner_id
+    feed_name
+    is_active
+    (partner_id, is_active)
+    (partner_id, feed_name, version) [unique]
+  }
+}
+
+Table integration_runs [note: 'Forced RLS. Audit record for every partner file, API pull, Kafka window, or replica extract.'] {
+  id varchar(64) [pk]
+  partner_id varchar(64) [not null]
+  contract_id varchar(64)
+  feed_name varchar(128) [not null]
+  source_reference varchar(255) [not null]
+  status integration_run_status [not null]
+  records_received integer [not null]
+  records_loaded integer [not null]
+  records_rejected integer [not null]
+  error_summary text
+  started_at timestamp [not null]
+  completed_at timestamp
+
+  indexes {
+    partner_id
+    contract_id
+    feed_name
+    status
+    (partner_id, started_at)
+    (status, started_at)
+    (partner_id, feed_name, source_reference) [unique]
+  }
+}
+
+Table raw_partner_transactions [note: 'Forced RLS. Canonical raw telco transaction feed with hashed customer identifier and immutable raw payload.'] {
+  id varchar(64) [pk]
+  partner_id varchar(64) [not null]
+  integration_run_id varchar(64) [not null]
+  provider_reference varchar(128) [not null]
+  agent_id varchar(64) [not null]
+  customer_msisdn_hash varchar(128) [not null]
+  transaction_type varchar(64) [not null]
+  amount integer [not null]
+  commission integer [not null]
+  status varchar(64) [not null]
+  transaction_created_at timestamp [not null]
+  raw_payload json [not null]
+  loaded_at timestamp [not null]
+
+  indexes {
+    partner_id
+    integration_run_id
+    provider_reference
+    agent_id
+    customer_msisdn_hash
+    transaction_type
+    status
+    transaction_created_at
+    (partner_id, provider_reference) [unique]
+    (partner_id, transaction_created_at)
+    (agent_id, transaction_created_at)
+  }
+}
+
+Table bank_settlements [note: 'Forced RLS. Bank settlement totals used to reconcile transaction count, gross value, commission, and currency.'] {
+  id varchar(64) [pk]
+  partner_id varchar(64) [not null]
+  integration_run_id varchar(64) [not null]
+  settlement_reference varchar(128) [not null]
+  settlement_date date [not null]
+  transaction_count integer [not null]
+  gross_amount integer [not null]
+  commission_amount integer [not null]
+  currency varchar(8) [not null]
+  raw_payload json [not null]
+  loaded_at timestamp [not null]
+
+  indexes {
+    partner_id
+    integration_run_id
+    settlement_reference
+    (partner_id, settlement_reference) [unique]
+    (partner_id, settlement_date)
+  }
+}
+
+Table reconciliation_exceptions [note: 'Forced RLS. Exception queue for settlement mismatch, missing file, duplicate reference, or SLA breach investigations.'] {
+  id varchar(64) [pk]
+  partner_id varchar(64) [not null]
+  integration_run_id varchar(64)
+  exception_type varchar(128) [not null]
+  severity varchar(32) [not null]
+  status varchar(32) [not null]
+  description text [not null]
+  evidence json [not null]
+  created_at timestamp [not null]
+
+  indexes {
+    partner_id
+    integration_run_id
+    exception_type
+    severity
+    status
+    (partner_id, status)
+    (exception_type, created_at)
+  }
+}
+
+Table dim_agents [note: 'dbt mart in analytics_marts. Governed agent dimension for BI and partner/customer-facing reporting.'] {
+  agent_id varchar(64) [pk]
+  agent_name varchar(255)
+  outlet varchar(255)
+  field_agent_id varchar(64)
+  field_agent_name varchar(255)
+  region varchar(255)
+  latitude float
+  longitude float
+  float_balance integer
+  cash_balance integer
+  outstanding_balance integer
+}
+
+Table dim_partners [note: 'dbt mart in analytics_marts. Governed partner dimension used for tenant-aware reporting and Superset RLS.'] {
+  partner_id varchar(64) [pk]
+  partner_code varchar(64)
+  partner_name varchar(255)
+  partner_type partner_type
+  country varchar(64)
+  integration_mode integration_mode
+  data_freshness_sla_minutes integer
+  is_active boolean
+}
+
+Table fact_partner_transactions [note: 'dbt mart fact_transactions. Trusted deduplicated transaction fact built from raw_partner_transactions.'] {
+  transaction_key varchar(64) [pk]
+  partner_id varchar(64)
+  provider_reference varchar(128)
+  agent_id varchar(64)
+  customer_msisdn_hash varchar(128)
+  transaction_type varchar(64)
+  amount integer
+  commission integer
+  transaction_status varchar(64)
+  transaction_created_at timestamp
+  loaded_at timestamp
+}
+
+Table mart_partner_network_health [note: 'dbt mart for customer-facing partner health dashboards in Superset.'] {
+  partner_id varchar(64) [pk]
+  partner_code varchar(64)
+  partner_name varchar(255)
+  country varchar(64)
+  transaction_volume integer
+  transaction_value integer
+  commission_value integer
+  active_agents integer
+  failed_transactions integer
+  latest_loaded_at timestamp
+}
+
+Table mart_liquidity_risk [note: 'dbt mart for operations and working-capital dashboards.'] {
+  agent_id varchar(64) [pk]
+  agent_name varchar(255)
+  region varchar(255)
+  float_balance integer
+  cash_balance integer
+  recent_transaction_volume integer
+  recent_transaction_value integer
+  liquidity_risk varchar(32)
+}
+
 Ref: users.agent_id > agents.id
 Ref: agents.field_agent_id > field_agents.id
 Ref: float_requests.agent_id > agents.id
@@ -228,3 +467,20 @@ Ref: event_log.transaction_id > transactions.id
 Ref: analytics_snapshots.agent_id > agents.id
 Ref: analytics_snapshots.field_agent_id > field_agents.id
 Ref: worker_errors.event_id > event_log.id
+Ref: partner_contracts.partner_id > partners.id
+Ref: integration_runs.partner_id > partners.id
+Ref: integration_runs.contract_id > partner_contracts.id
+Ref: raw_partner_transactions.partner_id > partners.id
+Ref: raw_partner_transactions.integration_run_id > integration_runs.id
+Ref: raw_partner_transactions.agent_id > agents.id
+Ref: bank_settlements.partner_id > partners.id
+Ref: bank_settlements.integration_run_id > integration_runs.id
+Ref: reconciliation_exceptions.partner_id > partners.id
+Ref: reconciliation_exceptions.integration_run_id > integration_runs.id
+Ref: dim_agents.agent_id > agents.id
+Ref: dim_agents.field_agent_id > field_agents.id
+Ref: dim_partners.partner_id > partners.id
+Ref: fact_partner_transactions.partner_id > dim_partners.partner_id
+Ref: fact_partner_transactions.agent_id > dim_agents.agent_id
+Ref: mart_partner_network_health.partner_id > dim_partners.partner_id
+Ref: mart_liquidity_risk.agent_id > dim_agents.agent_id

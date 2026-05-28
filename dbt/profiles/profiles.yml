@@ -1,0 +1,29 @@
+agent_network_analytics:
+  target: local
+  outputs:
+    local:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST', 'postgres') }}"
+      port: "{{ env_var('POSTGRES_PORT', '5432') | int }}"
+      user: "{{ env_var('POSTGRES_OWNER_USER') }}"
+      password: "{{ env_var('POSTGRES_OWNER_PASSWORD') }}"
+      dbname: "{{ env_var('POSTGRES_DB') }}"
+      schema: analytics
+      threads: 4
+      connect_timeout: 10
+    bigquery_dev:
+      type: bigquery
+      method: service-account
+      project: "{{ env_var('BIGQUERY_PROJECT', 'replace-me') }}"
+      dataset: agent_network_analytics
+      keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS', '/secrets/gcp-key.json') }}"
+      threads: 4
+    redshift_dev:
+      type: redshift
+      host: "{{ env_var('REDSHIFT_HOST', 'replace-me') }}"
+      port: "{{ env_var('REDSHIFT_PORT', '5439') | int }}"
+      user: "{{ env_var('REDSHIFT_USER', 'replace-me') }}"
+      password: "{{ env_var('REDSHIFT_PASSWORD', 'replace-me') }}"
+      dbname: "{{ env_var('REDSHIFT_DATABASE', 'dev') }}"
+      schema: agent_network_analytics
+      threads: 4

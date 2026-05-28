@@ -1,0 +1,33 @@
+{
+  "partner": {
+    "code": "TELCO_A_UG",
+    "name": "Telco A Uganda",
+    "partner_type": "telco",
+    "country": "Uganda",
+    "integration_mode": "kafka",
+    "data_freshness_sla_minutes": 15
+  },
+  "feed": {
+    "name": "transactions",
+    "version": "v1",
+    "arrival_sla": "near-real-time",
+    "dedupe_key": ["partner.code", "provider_reference"],
+    "pii_fields": ["customer_msisdn"],
+    "fields": [
+      {"name": "provider_reference", "type": "string", "required": true},
+      {"name": "agent_id", "type": "string", "required": true},
+      {"name": "customer_msisdn", "type": "string", "required": true},
+      {"name": "transaction_type", "type": "string", "required": true, "accepted_values": ["DEPOSIT", "WITHDRAWAL", "BILL_PAYMENT", "FLOAT_TOPUP"]},
+      {"name": "amount", "type": "integer", "required": true},
+      {"name": "commission", "type": "integer", "required": false},
+      {"name": "status", "type": "string", "required": true, "accepted_values": ["SUCCESS", "FAILED", "REVERSED", "PENDING"]},
+      {"name": "created_at", "type": "timestamp", "required": true}
+    ]
+  },
+  "governance": {
+    "owner": "data-platform",
+    "classification": "restricted-financial",
+    "raw_retention_days": 365,
+    "notes": "Raw customer MSISDN values are retained only in raw payloads and exposed to analytics through hashed identifiers."
+  }
+}

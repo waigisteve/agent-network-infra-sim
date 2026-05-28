@@ -45,3 +45,7 @@ Masking applies to customer lists, KYC review responses, transaction lists, agen
 - `GET /reports/agent/{agent_id}`
 - `GET /maps/field-team`
 - `GET /events`
+- `GET /partners`
+- `POST /integrations/telco-transactions`
+- `POST /integrations/bank-settlements`
+- `POST /integrations/reconcile-settlement`
