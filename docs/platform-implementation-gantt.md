@@ -15,6 +15,40 @@ The implementation should proceed in this order:
 
 This avoids high-cost production tooling before the core platform behavior is demonstrably correct.
 
+## Non-Functional Priorities
+
+Every implementation phase should be judged against five platform qualities:
+
+| Priority | What It Means Here | Implementation Gate |
+| --- | --- | --- |
+| Security | API, database, Kafka, partner feeds, dashboards, and admin actions must enforce least privilege and avoid exposing sensitive operational or customer data. | No new endpoint, ingestion path, worker, dashboard, or admin operation is complete until authentication, authorization, PII handling, audit logging, and failure behavior are tested. |
+| Availability | The system should keep core operational paths usable when optional components fail. | API health/readiness must distinguish database, Kafka, worker, Airflow, Superset, and dbt status so failures are isolated instead of hidden. |
+| Scalability | The design should show how load grows across users, records, events, integrations, and analytics workloads. | New flows must identify whether they scale vertically, horizontally, asynchronously, through caching, or through partitioning. |
+| Reliability | Events, ingestions, reconciliations, and analytics snapshots must be repeatable, traceable, and recoverable. | New integrations must include idempotency, retries, rejected-record handling, dead-letter handling where relevant, and replay notes. |
+| Integrations | External systems should connect through documented contracts and stable boundaries. | Partner feeds, APIs, webhooks, and analytics exports must have schemas, validation examples, versioning, and clear ownership. |
+
+The guiding system-design themes are:
+
+- APIs should expose stable, documented resources with predictable request and response behavior.
+- API gateway or reverse-proxy concerns should be separated from application logic: TLS termination, rate limiting, routing, request size limits, and central access logging belong at the edge.
+- JWT/OIDC should remain stateless for API calls, but token validation, expiry, role mapping, and audit logging must be explicit.
+- Webhooks and partner feeds should acknowledge quickly, persist raw receipt metadata, then process asynchronously through queues or workers.
+- Single points of failure should be called out directly, especially PostgreSQL, Redpanda, the worker process, the API container, and local-only dashboards.
+- CAP trade-offs should be documented per workflow. Financial and reconciliation paths should prefer consistency; dashboards and monitoring summaries can tolerate eventual consistency when clearly labelled.
+- Rate limiting should protect public or partner-facing endpoints, especially login, ingestion, webhook, search, and export routes.
+
+Reference material considered for this roadmap includes public system-design notes on APIs, API gateways, avoiding single points of failure, CAP theorem, scalability, JWTs, proxies, webhooks, and rate limiting:
+
+- <https://blog.algomaster.io/p/whats-an-api>
+- <https://blog.algomaster.io/p/what-is-an-api-gateway>
+- <https://blog.algomaster.io/p/system-design-how-to-avoid-single-point-of-failures>
+- <https://blog.algomaster.io/p/cap-theorem-explained>
+- <https://blog.algomaster.io/p/scalability>
+- <https://blog.algomaster.io/p/json-web-tokens>
+- <https://blog.algomaster.io/p/proxy-vs-reverse-proxy-explained>
+- <https://blog.algomaster.io/p/what-are-webhooks>
+- <https://blog.algomaster.io/p/rate-limiting-algorithms-explained-with-code>
+
 ## Gantt Chart
 
 ```mermaid
