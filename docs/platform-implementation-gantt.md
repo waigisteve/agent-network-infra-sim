@@ -58,17 +58,17 @@ gantt
     axisFormat  %d %b
 
     section Phase 0 Baseline
-    Freeze current demo baseline                    :p0a, 2026-06-04, 1d
-    Add platform readiness checklist                :p0b, after p0a, 1d
+    Freeze current demo baseline                    :done, p0a, 2026-06-04, 1d
+    Add platform readiness checklist                :done, p0b, after p0a, 1d
 
     section Phase 1 Readiness Automation
-    Build scripts/platform_check.py                 :p1a, after p0b, 2d
-    Add make platform-check                         :p1b, after p1a, 1d
-    Validate local stack checks                     :p1c, after p1b, 2d
+    Build scripts/platform_check.py                 :done, p1a, after p0b, 2d
+    Add make platform-check                         :done, p1b, after p1a, 1d
+    Validate local stack checks                     :done, p1c, after p1b, 2d
 
     section Phase 2 API Security
-    Document endpoint access matrix                 :p2a, after p1c, 1d
-    Add role access tests                           :p2b, after p2a, 2d
+    Document endpoint access matrix                 :done, p2a, after p1c, 1d
+    Add role access tests                           :done, p2b, after p2a, 2d
     Add PII masking regression tests                :p2c, after p2b, 2d
     Add auth failure audit logging                  :p2d, after p2c, 2d
     Add metrics and readiness detail                :p2e, after p2d, 2d
@@ -135,9 +135,11 @@ flowchart TD
 
 ## Lowest-Headwind Starting Point
 
-The first implementation step should be `scripts/platform_check.py` plus `make platform-check`.
+The first implementation step was `scripts/platform_check.py` plus `make platform-check`.
 
 That gives immediate value because it does not require new cloud accounts, paid services, or architecture changes. It also creates a foundation for every later phase: API security, Kafka reliability, partner ingestion, dbt, Superset, and deployment readiness can all plug into the same verification command.
+
+The current API security slice adds an endpoint access matrix and executable role-boundary tests. The remaining Phase 2 work is auth failure audit logging plus richer readiness and metrics detail.
 
 ## Acceptance Criteria
 
