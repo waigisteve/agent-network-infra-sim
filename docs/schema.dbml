@@ -70,6 +70,7 @@ Database role model:
 - agent_owner owns schema objects and runs Alembic through DATABASE_MIGRATION_URL.
 - agent_app is the runtime API/worker role from DATABASE_URL and receives SELECT, INSERT, UPDATE, DELETE grants.
 - agent_readonly is for reporting/audit access and receives SELECT grants only.
+- agent_auditor is an optional fresh-volume role for narrow SELECT access on event_log and security_audit_log.
 
 Security controls:
 - All application tables have ENABLE ROW LEVEL SECURITY and FORCE ROW LEVEL SECURITY from migration 0002_postgres_security.

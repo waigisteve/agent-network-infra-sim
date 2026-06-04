@@ -92,8 +92,15 @@ Use these database roles by responsibility:
 | Owner | `POSTGRES_OWNER_USER` / `DATABASE_MIGRATION_URL` | Alembic migrations and schema ownership only |
 | Application | `POSTGRES_APP_USER` / `DATABASE_URL` | API and worker runtime reads/writes |
 | Read-only | `POSTGRES_READONLY_USER` | Reporting, BI, and audit reads |
+| Audit read | `POSTGRES_AUDIT_USER` | Narrow audit-log reads on fresh volumes |
 
 If an existing local Docker volume was created before the hardening changes, the init script will not rerun automatically. Apply the role bootstrap and transfer table ownership once before running `alembic upgrade head`. Fresh volumes do not need this repair path.
+
+Reapply and verify database grants with:
+
+```bash
+make db-roles
+```
 
 Run encrypted logical backups with:
 

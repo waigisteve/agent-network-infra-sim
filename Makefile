@@ -1,4 +1,4 @@
-.PHONY: setup up down analytics orchestration dbt-build dbt-test migrate seed backup restore-drill test lint frontend-test demo-e2e platform-check
+.PHONY: setup up down analytics orchestration dbt-build dbt-test migrate seed db-roles backup restore-drill test lint frontend-test demo-e2e platform-check
 
 setup:
 	python3 -m venv .venv
@@ -28,6 +28,9 @@ migrate:
 
 seed:
 	python -m backend.app.scripts.seed
+
+db-roles:
+	scripts/apply_db_roles.sh
 
 backup:
 	scripts/encrypted_pg_backup.sh

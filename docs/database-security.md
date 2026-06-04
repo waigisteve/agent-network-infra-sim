@@ -24,8 +24,17 @@ Use `http://`, not `https://`, for local browser/API endpoints. Kafka and Postgr
 | Owner | `POSTGRES_OWNER_USER`, `POSTGRES_OWNER_PASSWORD`, `DATABASE_MIGRATION_URL` | Owns schema and runs Alembic migrations | Schema/table ownership, create/alter/drop during migrations |
 | Application | `POSTGRES_APP_USER`, `POSTGRES_APP_PASSWORD`, `DATABASE_URL` | Runtime API and worker access | `SELECT`, `INSERT`, `UPDATE`, `DELETE` on application tables |
 | Read-only | `POSTGRES_READONLY_USER`, `POSTGRES_READONLY_PASSWORD` | Reporting, BI, audit review | `SELECT` only |
+| Audit read | `POSTGRES_AUDIT_USER`, `POSTGRES_AUDIT_PASSWORD` | Dedicated audit-log review on fresh volumes | `SELECT` on `event_log` and `security_audit_log` only |
 
 The API and worker should use `DATABASE_URL`. Migration commands should use `DATABASE_MIGRATION_URL`. Do not use the owner role for normal application traffic.
+
+Apply and verify database grants against a running local database with:
+
+```bash
+make db-roles
+```
+
+Existing volumes that were created before `POSTGRES_AUDIT_USER` was introduced may not have a role capable of creating new roles. In that case, `make db-roles` reapplies and verifies the core owner/app/read-only grants and reports that the optional audit role will be created automatically on fresh volumes.
 
 ## Implemented Controls
 
@@ -47,6 +56,7 @@ The API and worker should use `DATABASE_URL`. Migration commands should use `DAT
 Fresh schema state:
 
 - The Postgres container creates owner, app, and read-only roles during first initialization.
+- Fresh volumes also create the optional audit-read role when `POSTGRES_AUDIT_USER` is configured.
 - Alembic should run with `DATABASE_MIGRATION_URL`, so tables are owned by the owner role.
 - `0002_postgres_security` enables forced RLS, creates two policies per table, grants app-role read/write access, grants read-only select access, and revokes public schema creation.
 - `0003_partner_integrations` creates partner, contract, ingestion-run, raw-feed, settlement, and reconciliation-exception tables. It also enables forced RLS and grants app/read-only access for those new tables in the same migration.
@@ -65,6 +75,7 @@ Future schema changes:
 - New tables should be covered in the same migration that creates them or by a follow-up migration that enables forced RLS and grants role-specific access.
 - Runtime code should not require owner credentials.
 - Security-sensitive flows should write redacted audit rows; never store passwords, JWTs, raw authorization headers, or full request bodies in `security_audit_log`.
+- Re-run `make db-roles` after adding tables that require app/read-only grants outside the normal Alembic security helper path.
 
 ## Local Validation Commands
 

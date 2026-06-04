@@ -216,6 +216,7 @@ Implemented in this repo:
 
 - RBAC and least privilege through separate owner, application, and read-only database users.
 - Owner-level schema changes use `DATABASE_MIGRATION_URL`; runtime API and worker processes use the restricted `DATABASE_URL` application role.
+- Database grants can be reapplied and verified with `make db-roles`.
 - SCRAM-SHA-256 password hashing and `pg_hba.conf` rules for the local PostgreSQL container.
 - Row-Level Security enabled by the `0002_postgres_security` Alembic migration for PostgreSQL tables.
 - Local network restriction by binding Postgres to `127.0.0.1:${POSTGRES_HOST_PORT:-55432}` and allowing only SCRAM-authenticated local/Docker subnets in `docker/postgres/pg_hba.conf`.
