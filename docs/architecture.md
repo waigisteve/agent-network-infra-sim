@@ -69,6 +69,7 @@ Use Postgres `jsonb` plus GIN indexes for `event_log.payload` and `analytics_sna
 - Optional Airflow service for ingestion/reconciliation/dbt orchestration.
 - Optional Superset service for governed dashboards and partner-facing RLS.
 - Database security controls: owner/app/read-only PostgreSQL roles, SCRAM-SHA-256 authentication, `pg_hba.conf` network rules, forced RLS policies, encrypted logical backups, and hosted pgAudit/encryption-at-rest requirements.
+- SPOF controls: documented SPOF register, encrypted backup creation, and restore drill into a temporary PostgreSQL database.
 
 ## Data Flow
 

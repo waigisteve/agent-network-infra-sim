@@ -37,6 +37,7 @@ The API and worker should use `DATABASE_URL`. Migration commands should use `DAT
 | SCRAM-SHA-256 authentication | `password_encryption=scram-sha-256` and `pg_hba.conf` network rules | New role passwords are SCRAM-hashed and network clients must authenticate with password auth. |
 | Network restriction | Postgres binds to `127.0.0.1:${POSTGRES_HOST_PORT:-55432}` and uses `docker/postgres/pg_hba.conf` | Database is not exposed on public interfaces in local Docker. Hosted databases should also use firewall rules/private networking. |
 | Backup encryption | `scripts/encrypted_pg_backup.sh` | `pg_dump` output is compressed and encrypted with AES-256-CBC using `BACKUP_ENCRYPTION_PASSPHRASE`. |
+| Restore validation | `scripts/restore_drill.sh` | Encrypted backup is decrypted, restored into a temporary PostgreSQL database, checked for core tables, and dropped afterward. |
 | Encryption at rest | Provider/disk-layer requirement | Local Docker volume encryption depends on host disk encryption. Hosted PostgreSQL must enable storage encryption at the provider layer. |
 | TLS in transit | `DATABASE_SSL_MODE`, `DATABASE_SSL_ROOT_CERT`, `DATABASE_SSL_CERT`, `DATABASE_SSL_KEY` | Production should use `verify-full`. Local Docker defaults to `prefer` because no private key material is committed. |
 | Security audit logging | `security_audit_log` table, auth failure writes, role-forbidden writes, and 401/403 middleware capture | Failed login attempts and blocked API access are queryable by admins through `GET /api/v1/security/audit-log`. |
@@ -73,6 +74,8 @@ docker-compose up -d postgres
 docker-compose exec -T postgres psql -U agent -d agent_network -tAc "SHOW password_encryption;"
 docker-compose exec -T postgres psql -U agent -d agent_network -tAc "SELECT count(*) FROM pg_class WHERE relnamespace = 'public'::regnamespace AND relkind = 'r' AND relrowsecurity AND relforcerowsecurity;"
 docker-compose run --rm api alembic -c backend/alembic.ini upgrade head
+BACKUP_ENCRYPTION_PASSPHRASE="set-a-secret-outside-git" make backup
+BACKUP_ENCRYPTION_PASSPHRASE="set-a-secret-outside-git" make restore-drill
 ```
 
 Use `docker-compose` in this WSL environment; the newer `docker compose` plugin has shown a local nil-pointer crash after rendering config.

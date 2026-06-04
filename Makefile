@@ -1,4 +1,4 @@
-.PHONY: setup up down analytics orchestration dbt-build dbt-test migrate seed backup test lint frontend-test demo-e2e platform-check
+.PHONY: setup up down analytics orchestration dbt-build dbt-test migrate seed backup restore-drill test lint frontend-test demo-e2e platform-check
 
 setup:
 	python3 -m venv .venv
@@ -31,6 +31,9 @@ seed:
 
 backup:
 	scripts/encrypted_pg_backup.sh
+
+restore-drill:
+	scripts/restore_drill.sh
 
 simulate:
 	docker compose exec -T api python -m backend.app.scripts.simulate_stream --duration-seconds 600 --interval-seconds 2

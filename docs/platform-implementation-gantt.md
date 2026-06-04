@@ -94,7 +94,7 @@ gantt
     section Phase 6 Production Shape
     Add production env template                     :p6a, after p2e, 1d
     Add gateway and deployment notes                :p6b, after p6a, 2d
-    Add backup and restore drill                    :p6c, after p6b, 2d
+    Add backup and restore drill                    :done, p6c, after p6b, 2d
     Add incident runbook                            :p6d, after p6c, 2d
 
     section Validation
@@ -139,7 +139,7 @@ The first implementation step was `scripts/platform_check.py` plus `make platfor
 
 That gives immediate value because it does not require new cloud accounts, paid services, or architecture changes. It also creates a foundation for every later phase: API security, Kafka reliability, partner ingestion, dbt, Superset, and deployment readiness can all plug into the same verification command.
 
-The current API security slice adds an endpoint access matrix, executable role-boundary tests, security audit logging, and richer readiness detail. The remaining Phase 2 work is to expand PII masking regression tests before moving into streaming-worker reliability.
+The current API security slice adds an endpoint access matrix, executable role-boundary tests, security audit logging, and richer readiness detail. The SPOF slice adds a reliability register plus encrypted backup restore validation. The remaining Phase 2 work is to expand PII masking regression tests before moving into streaming-worker reliability.
 
 ## Acceptance Criteria
 

@@ -101,6 +101,12 @@ Run encrypted logical backups with:
 BACKUP_ENCRYPTION_PASSPHRASE="set-a-secret-outside-git" make backup
 ```
 
+Validate the encrypted backup by restoring it into a temporary database and checking core tables:
+
+```bash
+BACKUP_ENCRYPTION_PASSPHRASE="set-a-secret-outside-git" make restore-drill
+```
+
 Do not commit generated backup files or certificate/private-key material. For hosted PostgreSQL, enable provider firewall/private-network controls, pgAudit, and storage encryption at rest in the platform.
 
 ## Local Without Docker

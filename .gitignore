@@ -10,3 +10,4 @@ frontend/dist/
 dbt/target/
 dbt/logs/
 dbt/profiles/.user.yml
+backups/

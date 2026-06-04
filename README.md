@@ -233,6 +233,7 @@ Managed-platform controls:
 - [Architecture](docs/architecture.md)
 - [API](docs/api.md)
 - [Database Security](docs/database-security.md)
+- [SPOF Analysis](docs/spof-analysis.md)
 - [Opareta Role Alignment](docs/opareta-role-alignment.md)
 - [Data Platform Roadmap](docs/data-platform-roadmap.md)
 - [Implementation Process](docs/implementation-process.md)
