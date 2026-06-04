@@ -1,4 +1,4 @@
-.PHONY: setup up down analytics orchestration dbt-build dbt-test migrate seed backup test lint frontend-test demo-e2e
+.PHONY: setup up down analytics orchestration dbt-build dbt-test migrate seed backup test lint frontend-test demo-e2e platform-check
 
 setup:
 	python3 -m venv .venv
@@ -40,6 +40,9 @@ simulate-partner-e2e:
 
 demo-e2e:
 	scripts/run_end_to_end_demo.sh
+
+platform-check:
+	python3 scripts/platform_check.py
 
 test:
 	pytest -q

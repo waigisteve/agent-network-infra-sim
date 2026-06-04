@@ -136,6 +136,16 @@ Override the default timing when needed:
 DURATION_SECONDS=300 ENDPOINT_INTERVAL_SECONDS=10 make demo-e2e
 ```
 
+## Platform Readiness Check
+
+After starting the local stack, run:
+
+```bash
+make platform-check
+```
+
+The check validates Docker service state, API liveness/readiness, seeded admin login, protected API access, frontend availability, Kafka external port reachability, optional Redpanda Console/Airflow/Superset access, and dbt project structure. Optional analytics and orchestration services are reported as `SKIP` when they are not running.
+
 ## Partner Integration Simulation
 
 The repo includes versioned partner contracts that model telco and bank integrations:
