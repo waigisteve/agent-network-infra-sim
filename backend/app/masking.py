@@ -59,6 +59,8 @@ def mask_payload(payload: dict[str, Any]) -> dict[str, Any]:
     for key, value in payload.items():
         if isinstance(value, dict):
             masked[key] = mask_payload(value)
+        elif isinstance(value, list):
+            masked[key] = [mask_payload(item) if isinstance(item, dict) else item for item in value]
         elif key in {"phone", "customer_phone"}:
             masked[key] = mask_phone(str(value))
         elif key in {"national_id", "id_number"}:

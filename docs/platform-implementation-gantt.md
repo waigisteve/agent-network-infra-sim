@@ -69,7 +69,7 @@ gantt
     section Phase 2 API Security
     Document endpoint access matrix                 :done, p2a, after p1c, 1d
     Add role access tests                           :done, p2b, after p2a, 2d
-    Add PII masking regression tests                :p2c, after p2b, 2d
+    Add PII masking regression tests                :done, p2c, after p2b, 2d
     Add auth failure audit logging                  :done, p2d, after p2c, 2d
     Add metrics and readiness detail                :done, p2e, after p2d, 2d
 
@@ -139,7 +139,7 @@ The first implementation step was `scripts/platform_check.py` plus `make platfor
 
 That gives immediate value because it does not require new cloud accounts, paid services, or architecture changes. It also creates a foundation for every later phase: API security, Kafka reliability, partner ingestion, dbt, Superset, and deployment readiness can all plug into the same verification command.
 
-The current API security slice adds an endpoint access matrix, executable role-boundary tests, security audit logging, and richer readiness detail. The SPOF slice adds a reliability register plus encrypted backup restore validation. The remaining Phase 2 work is to expand PII masking regression tests before moving into streaming-worker reliability.
+The API security phase now includes an endpoint access matrix, executable role-boundary tests, PII masking regression tests, security audit logging, and richer readiness detail. The SPOF slice adds a reliability register plus encrypted backup restore validation. The next dependency phase is streaming-worker reliability.
 
 ## Acceptance Criteria
 

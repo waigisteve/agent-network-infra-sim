@@ -25,7 +25,7 @@ Customer-facing and reporting endpoints mask customer PII in API responses:
 - addresses return `masked address`
 - birthdays return `masked`
 
-Masking applies to customer lists, KYC review responses, transaction lists, agent reports, and event audit payloads. The operational database retains source values for authorized back-office workflows.
+Masking applies to customer lists, KYC review responses, transaction lists, agent reports, and event audit payloads, including nested dictionaries and lists in event payloads. The operational database retains source values for authorized back-office workflows.
 
 ## Core Resources
 
