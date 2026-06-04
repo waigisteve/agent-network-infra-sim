@@ -46,6 +46,7 @@ TableGroup "PostgreSQL security controls" {
   float_requests
   transactions
   event_log
+  security_audit_log
   analytics_snapshots
   worker_errors
   partners
@@ -212,6 +213,30 @@ Table event_log [note: 'Forced RLS. Policies: event_log_app_rw for agent_app rea
     (topic, created_at)
     (name, created_at)
     (aggregate_type, aggregate_id)
+  }
+}
+
+Table security_audit_log [note: 'Forced RLS. Security audit rows for failed login, unauthorized, and forbidden API attempts. Secrets, JWTs, and raw request bodies are not stored.'] {
+  id varchar(64) [pk]
+  event_type varchar(128) [not null]
+  outcome varchar(64) [not null]
+  user_id varchar(64)
+  email varchar(255)
+  role role
+  method varchar(16) [not null]
+  path varchar(255) [not null]
+  client_host varchar(128)
+  detail text [not null]
+  created_at timestamp [not null]
+
+  indexes {
+    event_type
+    outcome
+    user_id
+    path
+    (event_type, created_at)
+    (outcome, created_at)
+    (user_id, created_at)
   }
 }
 
@@ -464,6 +489,7 @@ Ref: event_log.agent_id > agents.id
 Ref: event_log.customer_id > customers.id
 Ref: event_log.float_request_id > float_requests.id
 Ref: event_log.transaction_id > transactions.id
+Ref: security_audit_log.user_id > users.id
 Ref: analytics_snapshots.agent_id > agents.id
 Ref: analytics_snapshots.field_agent_id > field_agents.id
 Ref: worker_errors.event_id > event_log.id

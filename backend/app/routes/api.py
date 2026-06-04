@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Annotated
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -27,11 +27,13 @@ from backend.app.models import (
     PartnerORM,
     Role,
     SettlementReconciliationRequest,
+    SecurityAuditLogORM,
     TokenResponse,
     TransactionCreate,
     TransactionORM,
     UserORM,
 )
+from backend.app.security_audit import write_security_audit
 from backend.app.services.float_ops import approve_float_request, reconciliation, reject_float_request
 from backend.app.services.partner_ingestion import ingest_bank_settlements, ingest_telco_transactions, reconcile_partner_settlement
 from backend.app.services.transactions import create_transaction
@@ -81,9 +83,17 @@ def user_out(user: UserORM) -> dict[str, object]:
 
 
 @router.post("/auth/login", response_model=TokenResponse)
-async def login(request: LoginRequest, db: Annotated[Session, Depends(get_db)]) -> TokenResponse:
+async def login(request: LoginRequest, http_request: Request, db: Annotated[Session, Depends(get_db)]) -> TokenResponse:
     user = db.scalar(select(UserORM).where(UserORM.email == request.email))
     if user is None or not verify_password(request.password, user.password_hash):
+        write_security_audit(
+            db,
+            request=http_request,
+            event_type="login_failed",
+            outcome="blocked",
+            email=request.email,
+            detail="invalid credentials",
+        )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     return TokenResponse(access_token=create_access_token(user), user=user_out(user))
 
@@ -328,6 +338,29 @@ async def events(
             "created_at": event.created_at,
         }
         for event in db.scalars(select(EventLogORM).order_by(EventLogORM.created_at.desc())).all()
+    ]
+
+
+@router.get("/security/audit-log")
+async def security_audit_log(
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserORM, Depends(require_roles(Role.admin))],
+) -> list[dict[str, object]]:
+    return [
+        {
+            "id": audit.id,
+            "event_type": audit.event_type,
+            "outcome": audit.outcome,
+            "user_id": audit.user_id,
+            "email": audit.email,
+            "role": audit.role,
+            "method": audit.method,
+            "path": audit.path,
+            "client_host": audit.client_host,
+            "detail": audit.detail,
+            "created_at": audit.created_at,
+        }
+        for audit in db.scalars(select(SecurityAuditLogORM).order_by(SecurityAuditLogORM.created_at.desc())).all()
     ]
 
 

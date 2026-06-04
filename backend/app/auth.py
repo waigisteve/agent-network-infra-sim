@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from backend.app.config import settings
 from backend.app.db import get_db
 from backend.app.models import Role, UserORM
+from backend.app.security_audit import role_values, write_security_audit
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -47,8 +48,20 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: An
 
 
 def require_roles(*roles: Role):
-    async def dependency(user: Annotated[UserORM, Depends(get_current_user)]) -> UserORM:
+    async def dependency(
+        request: Request,
+        user: Annotated[UserORM, Depends(get_current_user)],
+        db: Annotated[Session, Depends(get_db)],
+    ) -> UserORM:
         if user.role not in roles:
+            write_security_audit(
+                db,
+                request=request,
+                event_type="role_forbidden",
+                outcome="blocked",
+                user=user,
+                detail=f"required roles: {role_values(roles)}; actual role: {user.role.value}",
+            )
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient role")
         return user
 

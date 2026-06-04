@@ -45,6 +45,7 @@ Masking applies to customer lists, KYC review responses, transaction lists, agen
 - `GET /reports/agent/{agent_id}`
 - `GET /maps/field-team`
 - `GET /events`
+- `GET /security/audit-log`
 - `GET /partners`
 - `POST /integrations/telco-transactions`
 - `POST /integrations/bank-settlements`
@@ -76,9 +77,36 @@ Public endpoints are limited to liveness/readiness and login. Every operational 
 | `GET /api/v1/reports/agent/{agent_id}` | Yes | Yes | Own agent only | Yes | Agent role cannot view another agent's report. |
 | `GET /api/v1/maps/field-team` | Yes | Yes | No | No | Location-oriented field operations scope. |
 | `GET /api/v1/events` | Yes | No | No | No | Admin audit/event stream only; payloads are masked. |
+| `GET /api/v1/security/audit-log` | Yes | No | No | No | Admin security audit stream for failed login and blocked access attempts. |
 | `GET /api/v1/partners` | Yes | Yes | No | No | Partner metadata visibility for operations. |
 | `POST /api/v1/integrations/telco-transactions` | Yes | No | No | No | Admin-controlled partner feed ingestion. |
 | `POST /api/v1/integrations/bank-settlements` | Yes | No | No | No | Admin-controlled settlement feed ingestion. |
 | `POST /api/v1/integrations/reconcile-settlement` | Yes | No | No | No | Admin-controlled reconciliation action. |
 
-The access matrix is backed by `tests/test_api_access_matrix.py`, which checks anonymous rejection, role rejection, KYC scope, admin-only integration scope, and agent self-access boundaries.
+The access matrix is backed by `tests/test_api_access_matrix.py`, which checks anonymous rejection, role rejection, KYC scope, admin-only integration scope, security audit logging, and agent self-access boundaries.
+
+## Readiness Response
+
+`GET /ready` keeps the original top-level compatibility keys:
+
+```json
+{
+  "status": "ready",
+  "database": "ok",
+  "kafka": "enabled"
+}
+```
+
+It also includes component detail for operational diagnosis:
+
+```json
+{
+  "components": {
+    "database": {"status": "ok", "latency_ms": 1.23},
+    "kafka": {"status": "enabled", "bootstrap_servers": "redpanda:9092"},
+    "security_audit_log": {"status": "ok", "records": 12}
+  }
+}
+```
+
+In production, `/ready` should be exposed only to infrastructure health checks or protected by the gateway/reverse proxy.

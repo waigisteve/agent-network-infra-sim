@@ -23,6 +23,7 @@ The operational tables, audit tables, worker tables, and reporting tables are in
 - `transactions.customer_id` links customer activity to KYC/customer records while keeping `customer_phone` as the operational lookup value.
 - `event_log.aggregate_type` and `event_log.aggregate_id` identify the domain aggregate for every event.
 - `event_log.agent_id`, `event_log.customer_id`, `event_log.float_request_id`, and `event_log.transaction_id` provide direct relational links for common event queries.
+- `security_audit_log.user_id` links blocked access attempts back to the user account when the caller is known.
 - `worker_errors.event_id` links failed consumer processing back to the event that failed.
 - `analytics_snapshots.scope`, `agent_id`, and `field_agent_id` support network-wide, agent-level, and field-agent-level reporting.
 - `partners`, `partner_contracts`, and `integration_runs` document external telco/bank feeds, expected schema, data freshness SLA, source reference, load status, and rejection counts.
@@ -41,6 +42,7 @@ The schema includes indexes for the expected high-volume filters:
 - Float workflows: `float_requests.agent_id`, `float_requests.status`, `float_requests.status + requested_at`, `float_requests.agent_id + status`.
 - Transaction history and reports: `transactions.agent_id + created_at`, `transactions.customer_id + created_at`, `transactions.transaction_type + created_at`, `transactions.customer_phone + created_at`.
 - Event audit: `event_log.topic + created_at`, `event_log.name + created_at`, `event_log.aggregate_type + aggregate_id`, plus entity FK indexes.
+- Security audit: `security_audit_log.event_type + created_at`, `security_audit_log.outcome + created_at`, and `security_audit_log.user_id + created_at`.
 - Analytics: `analytics_snapshots.scope + snapshot_date`, `analytics_snapshots.agent_id + snapshot_date`, `analytics_snapshots.field_agent_id + snapshot_date`.
 - Worker failures: `worker_errors.source + created_at`.
 - Partner metadata: `partners.partner_type + country`, active contract lookup, and integration mode.
@@ -55,6 +57,7 @@ Use Postgres `jsonb` plus GIN indexes for `event_log.payload` and `analytics_sna
 
 - React/Vite frontend for admin, reporting, KYC, field map, event audit, and mobile-agent workflows.
 - FastAPI API service with JWT role-based auth.
+- Security audit middleware and admin-only audit endpoint for failed login, unauthorized, and forbidden attempts.
 - PostgreSQL operational database.
 - Redpanda Kafka-compatible broker for domain events.
 - Worker process for analytics materialization and future stream consumers.
@@ -71,14 +74,15 @@ Use Postgres `jsonb` plus GIN indexes for `event_log.payload` and `analytics_sna
 
 1. A user logs in and receives a JWT.
 2. Frontend calls protected `/api/v1` routes.
-3. FastAPI validates role access, updates PostgreSQL, and publishes a domain event.
-4. Each event is also stored in `event_log` for auditability.
-5. Redpanda carries the stream for worker consumers.
-6. Worker materializes analytics snapshots for dashboard/reporting workflows.
-7. Partner feeds are validated against versioned contracts, loaded into raw integration tables, and reconciled against settlement totals.
-8. Airflow orchestrates partner ingestion, reconciliation, and dbt builds when the `orchestration` profile is enabled.
-9. dbt transforms operational/integration tables into governed analytics marts.
-10. Superset connects to mart schemas for internal dashboards and partner-scoped reporting.
+3. FastAPI validates JWT and role access; failed login, unauthorized, and forbidden attempts are written to `security_audit_log`.
+4. Authorized requests update PostgreSQL and publish domain events.
+5. Each event is also stored in `event_log` for business auditability.
+6. Redpanda carries the stream for worker consumers.
+7. Worker materializes analytics snapshots for dashboard/reporting workflows.
+8. Partner feeds are validated against versioned contracts, loaded into raw integration tables, and reconciled against settlement totals.
+9. Airflow orchestrates partner ingestion, reconciliation, and dbt builds when the `orchestration` profile is enabled.
+10. dbt transforms operational/integration tables into governed analytics marts.
+11. Superset connects to mart schemas for internal dashboards and partner-scoped reporting.
 
 ## Full Architecture Diagram
 
@@ -94,6 +98,7 @@ flowchart TB
     frontend[React / Vite Frontend<br/>http://127.0.0.1:5173]
     api[FastAPI Backend<br/>/api/v1<br/>JWT Auth + Role Guards]
     auth[Auth Module<br/>JWT + bcrypt<br/>Roles: admin, field_agent, agent, kyc_reviewer]
+    security_audit[Security Audit<br/>failed login + 401/403 capture]
     migration[Alembic Migrations<br/>DATABASE_MIGRATION_URL<br/>owner role only]
     db_security[DB Security Boundary<br/>SCRAM + pg_hba.conf<br/>TLS config + loopback bind]
     postgres[(PostgreSQL<br/>Operational DB<br/>Forced RLS)]
@@ -126,6 +131,7 @@ flowchart TB
         map_ui[Field Team Map]
         mobile_ui[Agent Mobile Interface]
         events_ui[Event Audit Log]
+        security_ui[Security Audit Review]
     end
 
     subgraph API Modules
@@ -138,6 +144,7 @@ flowchart TB
         reports_api[Reports API]
         map_api[Map API]
         events_api[Events API]
+        security_api[Security Audit API]
     end
 
     subgraph PostgreSQL Tables
@@ -148,6 +155,7 @@ flowchart TB
         float_tbl[(float_requests<br/>RLS forced)]
         tx_tbl[(transactions<br/>RLS forced)]
         event_tbl[(event_log<br/>RLS forced)]
+        security_audit_tbl[(security_audit_log<br/>RLS forced)]
         analytics_tbl[(analytics_snapshots<br/>RLS forced)]
         worker_errors_tbl[(worker_errors<br/>RLS forced)]
         partners_tbl[(partners<br/>RLS forced)]
@@ -182,6 +190,7 @@ flowchart TB
     frontend --> map_ui
     frontend --> mobile_ui
     frontend --> events_ui
+    frontend --> security_ui
     frontend --> api
     docs --> api
 
@@ -205,12 +214,15 @@ flowchart TB
     api --> reports_api
     api --> map_api
     api --> events_api
+    api --> security_api
     api --> ingestion
     ingestion --> reconciliation_flow
     airflow --> ingestion
     airflow --> dbt
 
     auth --> users_tbl
+    auth --> security_audit
+    security_audit --> security_audit_tbl
     agents_api --> app_role
     field_api --> app_role
     customers_api --> app_role
@@ -220,6 +232,7 @@ flowchart TB
     reports_api --> app_role
     map_api --> app_role
     events_api --> app_role
+    security_api --> app_role
 
     postgres --> users_tbl
     postgres --> agents_tbl
@@ -228,6 +241,7 @@ flowchart TB
     postgres --> float_tbl
     postgres --> tx_tbl
     postgres --> event_tbl
+    postgres --> security_audit_tbl
     postgres --> analytics_tbl
     postgres --> worker_errors_tbl
     postgres --> partners_tbl
@@ -243,6 +257,7 @@ flowchart TB
     event_tbl -->|customer_id| customers_tbl
     event_tbl -->|float_request_id| float_tbl
     event_tbl -->|transaction_id| tx_tbl
+    security_audit_tbl -->|user_id| users_tbl
     worker_errors_tbl -->|event_id| event_tbl
     analytics_tbl -->|agent_id| agents_tbl
     analytics_tbl -->|field_agent_id| field_agents_tbl
@@ -270,6 +285,7 @@ flowchart TB
     redpanda --> commission_events
 
     api -->|also persists every event| event_tbl
+    api -->|blocked auth/access attempts| security_audit_tbl
     ingestion --> partners_tbl
     ingestion --> contracts_tbl
     ingestion --> runs_tbl
@@ -315,6 +331,7 @@ flowchart TB
         float_requests[(float_requests)]
         transactions[(transactions)]
         event_log[(event_log)]
+        security_audit_log[(security_audit_log)]
         analytics_snapshots[(analytics_snapshots)]
         worker_errors[(worker_errors)]
     end
@@ -333,10 +350,12 @@ flowchart TB
     postgres --> float_requests
     postgres --> transactions
     postgres --> event_log
+    postgres --> security_audit_log
     postgres --> analytics_snapshots
     postgres --> worker_errors
     api -->|domain events| redpanda
     api -->|audit event_log insert| event_log
+    api -->|security audit insert| security_audit_log
     redpanda --> worker
     worker -->|snapshot updates| app_role
     worker -->|processing failures| worker_errors
@@ -412,6 +431,7 @@ sequenceDiagram
     U->>FE: Login / perform action
     FE->>API: API request with JWT
     API->>API: Validate role permissions
+    API->>DB: Write security_audit_log row when auth or role check fails
     API->>APP: Connect with DATABASE_URL
     APP->>DB: Update operational tables through RLS policies
     APP->>DB: Insert event_log audit record through RLS policies

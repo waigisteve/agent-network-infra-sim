@@ -129,3 +129,35 @@ def test_agent_can_only_view_own_agent_report() -> None:
 
     assert own_response.status_code == 200
     assert other_response.status_code == 403
+
+
+def test_failed_login_is_written_to_security_audit_log() -> None:
+    failed = request("POST", "/api/v1/auth/login", json={"email": "admin@example.com", "password": "wrong"})
+    audit = request("GET", "/api/v1/security/audit-log", token=login("admin@example.com"))
+
+    assert failed.status_code == 401
+    assert audit.status_code == 200
+    latest = audit.json()[0]
+    assert latest["event_type"] == "login_failed"
+    assert latest["outcome"] == "blocked"
+    assert latest["email"] == "admin@example.com"
+    assert latest["detail"] == "invalid credentials"
+
+
+def test_forbidden_role_attempt_is_written_to_security_audit_log() -> None:
+    field_token = login("field@example.com")
+    forbidden = request("GET", "/api/v1/events", token=field_token)
+    audit = request("GET", "/api/v1/security/audit-log", token=login("admin@example.com"))
+
+    assert forbidden.status_code == 403
+    assert audit.status_code == 200
+    event_types = {item["event_type"] for item in audit.json()}
+    assert "role_forbidden" in event_types
+    assert "api_access_blocked" in event_types
+
+
+def test_security_audit_log_is_admin_only() -> None:
+    field_token = login("field@example.com")
+
+    assert request("GET", "/api/v1/security/audit-log", token=field_token).status_code == 403
+    assert request("GET", "/api/v1/security/audit-log").status_code == 401

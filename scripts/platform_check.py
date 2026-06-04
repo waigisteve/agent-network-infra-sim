@@ -81,9 +81,10 @@ def check_api_readiness(api_base_url: str, timeout_seconds: int) -> CheckResult:
         status, payload = http_json(f"{api_base_url}/ready", timeout_seconds)
     except Exception as exc:
         return CheckResult("api.ready", "fail", str(exc))
-    if status == 200 and payload.get("database") == "ok":
+    audit_status = payload.get("components", {}).get("security_audit_log", {}).get("status")
+    if status == 200 and payload.get("database") == "ok" and audit_status == "ok":
         kafka = payload.get("kafka", "unknown")
-        return CheckResult("api.ready", "ok", f"database ok, kafka {kafka}")
+        return CheckResult("api.ready", "ok", f"database ok, kafka {kafka}, security audit ok")
     return CheckResult("api.ready", "fail", f"unexpected response: HTTP {status} {payload}")
 
 

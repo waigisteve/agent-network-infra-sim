@@ -301,6 +301,27 @@ class EventLogORM(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class SecurityAuditLogORM(Base):
+    __tablename__ = "security_audit_log"
+    __table_args__ = (
+        Index("ix_security_audit_event_created", "event_type", "created_at"),
+        Index("ix_security_audit_outcome_created", "outcome", "created_at"),
+        Index("ix_security_audit_user_created", "user_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    event_type: Mapped[str] = mapped_column(String(128), index=True)
+    outcome: Mapped[str] = mapped_column(String(64), index=True)
+    user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    role: Mapped[Role | None] = mapped_column(Enum(Role), nullable=True)
+    method: Mapped[str] = mapped_column(String(16))
+    path: Mapped[str] = mapped_column(String(255), index=True)
+    client_host: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    detail: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class AnalyticsSnapshotORM(Base):
     __tablename__ = "analytics_snapshots"
     __table_args__ = (

@@ -10,7 +10,7 @@ This repo implements local PostgreSQL hardening for the Docker stack and documen
 | API | `http://127.0.0.1:8000` | FastAPI base URL |
 | API docs | `http://127.0.0.1:8000/docs` | OpenAPI docs |
 | Health | `http://127.0.0.1:8000/health` | Liveness check |
-| Readiness | `http://127.0.0.1:8000/ready` | Database/Kafka readiness |
+| Readiness | `http://127.0.0.1:8000/ready` | Database/Kafka/security-audit readiness |
 | Redpanda Console | `http://127.0.0.1:18081` | Kafka topic browser |
 | Kafka external bootstrap | `127.0.0.1:19092` | External Kafka clients |
 | PostgreSQL | `127.0.0.1:${POSTGRES_HOST_PORT:-55432}` | Local DB endpoint bound to loopback |
@@ -39,6 +39,7 @@ The API and worker should use `DATABASE_URL`. Migration commands should use `DAT
 | Backup encryption | `scripts/encrypted_pg_backup.sh` | `pg_dump` output is compressed and encrypted with AES-256-CBC using `BACKUP_ENCRYPTION_PASSPHRASE`. |
 | Encryption at rest | Provider/disk-layer requirement | Local Docker volume encryption depends on host disk encryption. Hosted PostgreSQL must enable storage encryption at the provider layer. |
 | TLS in transit | `DATABASE_SSL_MODE`, `DATABASE_SSL_ROOT_CERT`, `DATABASE_SSL_CERT`, `DATABASE_SSL_KEY` | Production should use `verify-full`. Local Docker defaults to `prefer` because no private key material is committed. |
+| Security audit logging | `security_audit_log` table, auth failure writes, role-forbidden writes, and 401/403 middleware capture | Failed login attempts and blocked API access are queryable by admins through `GET /api/v1/security/audit-log`. |
 
 ## Schema State Effects
 
@@ -48,6 +49,7 @@ Fresh schema state:
 - Alembic should run with `DATABASE_MIGRATION_URL`, so tables are owned by the owner role.
 - `0002_postgres_security` enables forced RLS, creates two policies per table, grants app-role read/write access, grants read-only select access, and revokes public schema creation.
 - `0003_partner_integrations` creates partner, contract, ingestion-run, raw-feed, settlement, and reconciliation-exception tables. It also enables forced RLS and grants app/read-only access for those new tables in the same migration.
+- `0005_security_audit_log` creates the security audit table, indexes event/outcome/user timelines, enables forced RLS, grants runtime read/write access, and grants read-only select access.
 
 Existing local schema state:
 
@@ -61,6 +63,7 @@ Future schema changes:
 - New migrations should run only through `DATABASE_MIGRATION_URL`.
 - New tables should be covered in the same migration that creates them or by a follow-up migration that enables forced RLS and grants role-specific access.
 - Runtime code should not require owner credentials.
+- Security-sensitive flows should write redacted audit rows; never store passwords, JWTs, raw authorization headers, or full request bodies in `security_audit_log`.
 
 ## Local Validation Commands
 

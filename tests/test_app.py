@@ -40,7 +40,9 @@ def login(email: str = "admin@example.com") -> str:
 
 def test_health_and_ready_endpoints() -> None:
     assert request("GET", "/health").json() == {"status": "ok"}
-    assert request("GET", "/ready").json()["database"] == "ok"
+    ready = request("GET", "/ready").json()
+    assert ready["database"] == "ok"
+    assert ready["components"]["security_audit_log"]["status"] == "ok"
 
 
 def test_auth_login_and_protected_route() -> None:
