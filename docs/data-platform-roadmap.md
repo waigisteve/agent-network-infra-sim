@@ -45,6 +45,8 @@ flowchart TB
 
 ## dbt Models
 
+The detailed SQL lineage is documented in [`sql-logic.md`](sql-logic.md), including the OLTP tables, dbt staging/intermediate/mart SQL, reconciliation SQL, and the `make e2e-sql-demo` command that prints real simulated records.
+
 | Layer | Example model | Purpose |
 | --- | --- | --- |
 | Source | `src_postgres.yml` | Declare operational and partner source tables. |

@@ -233,6 +233,7 @@ Managed-platform controls:
 - [Development](docs/development.md)
 - [Architecture](docs/architecture.md)
 - [API](docs/api.md)
+- [SQL Logic And Lineage](docs/sql-logic.md)
 - [Database Security](docs/database-security.md)
 - [SPOF Analysis](docs/spof-analysis.md)
 - [Opareta Role Alignment](docs/opareta-role-alignment.md)
