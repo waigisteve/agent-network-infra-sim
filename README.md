@@ -226,3 +226,4 @@ Managed-platform controls:
 - [Opareta Role Alignment](docs/opareta-role-alignment.md)
 - [Data Platform Roadmap](docs/data-platform-roadmap.md)
 - [Implementation Process](docs/implementation-process.md)
+- [Platform Implementation Gantt](docs/platform-implementation-gantt.md)
