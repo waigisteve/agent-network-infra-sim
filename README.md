@@ -103,6 +103,14 @@ The Redpanda Console groups page should show these local consumer groups when th
 
 Open: `http://127.0.0.1:18081/groups`
 
+Run the event-to-snapshot lineage demo:
+
+```bash
+make event-snapshot-demo
+```
+
+This publishes simulated operational events, waits for the worker to consume them, and prints proof that `event_log`, `stream_consumer_offsets`, and `analytics_snapshots` advanced together.
+
 Run the partner integration simulation:
 
 ```bash

@@ -84,10 +84,11 @@ Use Postgres `jsonb` plus GIN indexes for `event_log.payload` and `analytics_sna
 5. Each event is also stored in `event_log` for business auditability.
 6. Redpanda carries the stream for worker consumers.
 7. Worker materializes analytics snapshots, records consumer offsets, and dead-letters malformed or failed stream messages.
-8. Partner feeds are validated against versioned contracts, loaded into raw integration tables, and reconciled against settlement totals.
-9. Airflow orchestrates partner ingestion, reconciliation, and dbt builds when the `orchestration` profile is enabled.
-10. dbt transforms operational/integration tables into governed analytics marts.
-11. Superset connects to mart schemas for internal dashboards and partner-scoped reporting.
+8. `GET /api/v1/reports/analytics-snapshots` exposes the latest materialized worker outputs for admin and field-operations reporting.
+9. Partner feeds are validated against versioned contracts, loaded into raw integration tables, and reconciled against settlement totals.
+10. Airflow orchestrates partner ingestion, reconciliation, and dbt builds when the `orchestration` profile is enabled.
+11. dbt transforms operational/integration tables into governed analytics marts.
+12. Superset connects to mart schemas for internal dashboards and partner-scoped reporting.
 
 ## Full Architecture Diagram
 

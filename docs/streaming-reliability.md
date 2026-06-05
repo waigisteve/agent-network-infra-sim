@@ -62,6 +62,36 @@ flowchart LR
     dlq --> readiness
 ```
 
+## Event-to-Snapshot Demo
+
+Run the local proof with:
+
+```bash
+make event-snapshot-demo
+```
+
+The script performs this sequence:
+
+1. Applies Alembic migrations and seeds deterministic base data.
+2. Captures current `event_log`, `analytics_snapshots`, and `stream_consumer_offsets` counts.
+3. Publishes simulated operational events through `backend.app.scripts.simulate_stream`.
+4. Waits until the worker advances consumer offsets and materializes new analytics snapshots.
+5. Prints the latest consumer offsets and analytics snapshot rows.
+
+Successful output proves this lineage:
+
+```mermaid
+flowchart LR
+    api[API / simulator] --> event_log[(event_log)]
+    api --> kafka[Redpanda topics]
+    kafka --> worker[Worker consumer]
+    worker --> offsets[(stream_consumer_offsets)]
+    worker --> snapshots[(analytics_snapshots)]
+    snapshots --> reports[analytics snapshot API]
+```
+
+The API output is available through `GET /api/v1/reports/analytics-snapshots` for `admin` and `field_agent` roles.
+
 ## Production Notes
 
 - Consumer offsets are application-level readiness evidence; Kafka remains the authoritative broker offset store.

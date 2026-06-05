@@ -77,7 +77,7 @@ gantt
     Document topic and event schemas                :done, p3a, after p1c, 2d
     Add worker lag and readiness checks             :done, p3b, after p3a, 2d
     Add dead-letter error handling                  :done, p3c, after p3b, 3d
-    Add event-to-snapshot demo                      :p3d, after p3c, 2d
+    Add event-to-snapshot demo                      :done, p3d, after p3c, 2d
 
     section Phase 4 Partner Integrations
     Add contract validation tests                   :p4a, after p1c, 2d
@@ -139,7 +139,7 @@ The first implementation step was `scripts/platform_check.py` plus `make platfor
 
 That gives immediate value because it does not require new cloud accounts, paid services, or architecture changes. It also creates a foundation for every later phase: API security, Kafka reliability, partner ingestion, dbt, Superset, and deployment readiness can all plug into the same verification command.
 
-The API security phase now includes an endpoint access matrix, executable role-boundary tests, PII masking regression tests, security audit logging, and richer readiness detail. The SPOF slice adds a reliability register plus encrypted backup restore validation. The streaming-worker reliability slice now persists consumer offsets, failure counts, and dead-letter events with admin-only readiness endpoints. The next dependency step is the event-to-snapshot demo and topic schema documentation.
+The API security phase now includes an endpoint access matrix, executable role-boundary tests, PII masking regression tests, security audit logging, and richer readiness detail. The SPOF slice adds a reliability register plus encrypted backup restore validation. The streaming-worker reliability phase now persists consumer offsets, failure counts, dead-letter events, topic documentation, and an event-to-snapshot demo. The next dependency phase is partner integration hardening with rejected-record fixtures and idempotency checks.
 
 ## Acceptance Criteria
 

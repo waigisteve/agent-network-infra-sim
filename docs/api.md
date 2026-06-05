@@ -42,6 +42,7 @@ Masking applies to customer lists, KYC review responses, transaction lists, agen
 - `POST /transactions`
 - `GET /commissions`
 - `GET /reports/agent-network`
+- `GET /reports/analytics-snapshots`
 - `GET /reports/agent/{agent_id}`
 - `GET /maps/field-team`
 - `GET /events`
@@ -76,6 +77,7 @@ Public endpoints are limited to liveness/readiness and login. Every operational 
 | `POST /api/v1/transactions` | Yes | No | Yes | No | Agent-created transactions are forced to the caller's assigned `agent_id`. |
 | `GET /api/v1/commissions` | Yes | Yes | Yes | Yes | Aggregate commission view. |
 | `GET /api/v1/reports/agent-network` | Yes | Yes | No | No | Network-level operational reporting. |
+| `GET /api/v1/reports/analytics-snapshots` | Yes | Yes | No | No | Materialized worker snapshot output for event-to-report lineage checks. |
 | `GET /api/v1/reports/agent/{agent_id}` | Yes | Yes | Own agent only | Yes | Agent role cannot view another agent's report. |
 | `GET /api/v1/maps/field-team` | Yes | Yes | No | No | Location-oriented field operations scope. |
 | `GET /api/v1/events` | Yes | No | No | No | Admin audit/event stream only; payloads are masked. |

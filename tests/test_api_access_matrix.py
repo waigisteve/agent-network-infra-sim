@@ -49,6 +49,7 @@ def test_protected_get_endpoints_reject_anonymous_requests() -> None:
         "/api/v1/transactions",
         "/api/v1/commissions",
         "/api/v1/reports/agent-network",
+        "/api/v1/reports/analytics-snapshots",
         "/api/v1/reports/agent/agent_neema",
         "/api/v1/maps/field-team",
         "/api/v1/events",
@@ -105,6 +106,7 @@ def test_field_agent_scope_rejects_agent_role() -> None:
         "/api/v1/field-agents",
         "/api/v1/float/reconciliation",
         "/api/v1/reports/agent-network",
+        "/api/v1/reports/analytics-snapshots",
         "/api/v1/maps/field-team",
         "/api/v1/partners",
     ]

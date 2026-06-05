@@ -15,6 +15,7 @@ from backend.app.jobs import build_agent_network_report
 from backend.app.masking import mask_customer_record, mask_payload
 from backend.app.models import (
     AgentORM,
+    AnalyticsSnapshotORM,
     CustomerORM,
     DeadLetterEventORM,
     EventLogORM,
@@ -280,6 +281,25 @@ async def agent_network_report(
     _: Annotated[UserORM, Depends(require_roles(Role.admin, Role.field_agent))],
 ) -> dict[str, object]:
     return build_agent_network_report(db).model_dump(mode="json")
+
+
+@router.get("/reports/analytics-snapshots")
+async def analytics_snapshots(
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserORM, Depends(require_roles(Role.admin, Role.field_agent))],
+) -> list[dict[str, object]]:
+    return [
+        {
+            "id": snapshot.id,
+            "snapshot_date": snapshot.snapshot_date,
+            "scope": snapshot.scope,
+            "agent_id": snapshot.agent_id,
+            "field_agent_id": snapshot.field_agent_id,
+            "metrics": snapshot.metrics,
+            "created_at": snapshot.created_at,
+        }
+        for snapshot in db.scalars(select(AnalyticsSnapshotORM).order_by(AnalyticsSnapshotORM.created_at.desc()).limit(25)).all()
+    ]
 
 
 @router.get("/reports/agent/{agent_id}")

@@ -146,6 +146,26 @@ def test_analytics_and_map_endpoints() -> None:
     assert len(map_response.json()["agents"]) >= 5
 
 
+def test_analytics_snapshots_endpoint_returns_materialized_worker_output() -> None:
+    with SessionLocal() as db:
+        process_stream_message(
+            db,
+            consumer_group="agent-network-worker",
+            topic="transaction-events",
+            partition=0,
+            offset=88,
+            raw_payload='{"id": "event-snapshot-88", "name": "transaction.created", "payload": {"amount": 5000}}',
+        )
+        db.commit()
+
+    response = request("GET", "/api/v1/reports/analytics-snapshots", token=login())
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload[0]["scope"] == "network"
+    assert "metrics" in payload[0]
+
+
 def test_customer_and_reporting_outputs_mask_pii() -> None:
     admin_token = login()
     agent_token = login("agent@example.com")
@@ -314,8 +334,8 @@ def test_stream_processing_records_consumer_offset() -> None:
         process_stream_message(
             db,
             consumer_group="agent-network-worker",
-            topic="transaction-events",
-            partition=0,
+            topic="test-transaction-events",
+            partition=7,
             offset=42,
             raw_payload='{"id": "event-42", "name": "transaction.created", "payload": {"amount": 5000}}',
         )
@@ -326,9 +346,10 @@ def test_stream_processing_records_consumer_offset() -> None:
 
     assert response.status_code == 200
     assert payload["status"] == "ok"
-    assert payload["summary"]["tracked_partitions"] == 1
-    assert payload["summary"]["processed_total"] == 1
-    assert payload["consumer_groups"][0]["last_event_id"] == "event-42"
+    assert payload["summary"]["processed_total"] >= 1
+    offset_row = next(row for row in payload["consumer_groups"] if row["topic"] == "test-transaction-events" and row["partition"] == 7)
+    assert offset_row["last_event_id"] == "event-42"
+    assert offset_row["last_offset"] == 42
 
 
 def test_stream_failure_records_dead_letter_event_and_degraded_readiness() -> None:
