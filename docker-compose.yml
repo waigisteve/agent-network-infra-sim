@@ -72,6 +72,7 @@ services:
       - ./backend:/app/backend
       - ./data:/app/data
       - ./contracts:/app/contracts
+      - ./storage:/app/storage
 
   worker:
     build:

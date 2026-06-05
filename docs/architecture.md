@@ -21,6 +21,7 @@ The source DBML for the diagram lives in [`docs/schema.dbml`](schema.dbml). It n
 The operational tables, audit tables, worker tables, and reporting tables are intentionally linked so the workflow can be traced end to end:
 
 - `transactions.customer_id` links customer activity to KYC/customer records while keeping `customer_phone` as the operational lookup value.
+- `kyc_documents.customer_id` links KYC images/PDF evidence to the customer while PostgreSQL stores only metadata, hashes, status, and storage keys.
 - `event_log.aggregate_type` and `event_log.aggregate_id` identify the domain aggregate for every event.
 - `event_log.agent_id`, `event_log.customer_id`, `event_log.float_request_id`, and `event_log.transaction_id` provide direct relational links for common event queries.
 - `security_audit_log.user_id` links blocked access attempts back to the user account when the caller is known.
@@ -42,6 +43,7 @@ The schema includes indexes for the expected high-volume filters:
 - Auth and user management: `users.email`, `users.role`, `users.agent_id`, `users.role + is_active`.
 - Field operations: `agents.field_agent_id`, `agents.field_agent_id + name`, `agents.latitude + longitude`.
 - KYC queues: `customers.phone`, `customers.compliance_status + verified_at`, `customers.name + surname`.
+- KYC documents: `kyc_documents.customer_id + created_at`, `kyc_documents.verification_status + created_at`, and `kyc_documents.sha256_hash`.
 - Float workflows: `float_requests.agent_id`, `float_requests.status`, `float_requests.status + requested_at`, `float_requests.agent_id + status`.
 - Transaction history and reports: `transactions.agent_id + created_at`, `transactions.customer_id + created_at`, `transactions.transaction_type + created_at`, `transactions.customer_phone + created_at`.
 - Event audit: `event_log.topic + created_at`, `event_log.name + created_at`, `event_log.aggregate_type + aggregate_id`, plus entity FK indexes.
@@ -63,6 +65,7 @@ Use Postgres `jsonb` plus GIN indexes for `event_log.payload` and `analytics_sna
 - FastAPI API service with JWT role-based auth.
 - Security audit middleware and admin-only audit endpoint for failed login, unauthorized, and forbidden attempts.
 - PostgreSQL operational database.
+- Local KYC document storage adapter writing to `storage/kyc` for development; production should swap this for S3, Azure Blob Storage, Google Cloud Storage, or MinIO.
 - Redpanda Kafka-compatible broker for domain events.
 - Worker process for analytics materialization, consumer offset tracking, and dead-letter capture.
 - Named Kafka monitor consumers for analytics, fraud, liquidity, and reconciliation visibility in Redpanda Console.
@@ -81,14 +84,15 @@ Use Postgres `jsonb` plus GIN indexes for `event_log.payload` and `analytics_sna
 2. Frontend calls protected `/api/v1` routes.
 3. FastAPI validates JWT and role access; failed login, unauthorized, and forbidden attempts are written to `security_audit_log`.
 4. Authorized requests update PostgreSQL and publish domain events.
-5. Each event is also stored in `event_log` for business auditability.
-6. Redpanda carries the stream for worker consumers.
-7. Worker materializes analytics snapshots, records consumer offsets, and dead-letters malformed or failed stream messages.
-8. `GET /api/v1/reports/analytics-snapshots` exposes the latest materialized worker outputs for admin and field-operations reporting.
-9. Partner feeds are validated against versioned contracts, loaded into raw integration tables, and reconciled against settlement totals.
-10. Airflow orchestrates partner ingestion, reconciliation, and dbt builds when the `orchestration` profile is enabled.
-11. dbt transforms operational/integration tables into governed analytics marts.
-12. Superset connects to mart schemas for internal dashboards and partner-scoped reporting.
+5. KYC document uploads write file bytes to local dev storage and metadata/hash rows to `kyc_documents`; production should use object storage and signed URLs.
+6. Each event is also stored in `event_log` for business auditability.
+7. Redpanda carries the stream for worker consumers.
+8. Worker materializes analytics snapshots, records consumer offsets, and dead-letters malformed or failed stream messages.
+9. `GET /api/v1/reports/analytics-snapshots` exposes the latest materialized worker outputs for admin and field-operations reporting.
+10. Partner feeds are validated against versioned contracts, loaded into raw integration tables, and reconciled against settlement totals.
+11. Airflow orchestrates partner ingestion, reconciliation, and dbt builds when the `orchestration` profile is enabled.
+12. dbt transforms operational/integration tables into governed analytics marts.
+13. Superset connects to mart schemas for internal dashboards and partner-scoped reporting.
 
 ## Full Architecture Diagram
 
@@ -145,6 +149,7 @@ flowchart TB
         field_api[Field Agents API]
         customers_api[Customers API]
         kyc_api[KYC Review API]
+        kyc_docs_api[KYC Document API]
         float_api[Float Requests API]
         tx_api[Transactions API]
         reports_api[Reports API]
@@ -158,6 +163,7 @@ flowchart TB
         agents_tbl[(agents<br/>RLS forced)]
         field_agents_tbl[(field_agents<br/>RLS forced)]
         customers_tbl[(customers<br/>RLS forced)]
+        kyc_documents_tbl[(kyc_documents<br/>RLS forced)]
         float_tbl[(float_requests<br/>RLS forced)]
         tx_tbl[(transactions<br/>RLS forced)]
         event_tbl[(event_log<br/>RLS forced)]
@@ -217,6 +223,7 @@ flowchart TB
     api --> field_api
     api --> customers_api
     api --> kyc_api
+    api --> kyc_docs_api
     api --> float_api
     api --> tx_api
     api --> reports_api
@@ -235,6 +242,7 @@ flowchart TB
     field_api --> app_role
     customers_api --> app_role
     kyc_api --> app_role
+    kyc_docs_api --> app_role
     float_api --> app_role
     tx_api --> app_role
     reports_api --> app_role
@@ -246,6 +254,7 @@ flowchart TB
     postgres --> agents_tbl
     postgres --> field_agents_tbl
     postgres --> customers_tbl
+    postgres --> kyc_documents_tbl
     postgres --> float_tbl
     postgres --> tx_tbl
     postgres --> event_tbl
@@ -284,6 +293,7 @@ flowchart TB
     tx_api -->|transaction.created| redpanda
     tx_api -->|commission.calculated| redpanda
     kyc_api -->|customer.kyc_reviewed| redpanda
+    kyc_docs_api -->|customer.kyc_submitted| redpanda
     map_api -->|agent.location_updated| redpanda
 
     redpanda --> float_events

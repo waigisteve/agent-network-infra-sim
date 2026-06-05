@@ -244,6 +244,30 @@ class CustomerORM(Base):
     compliance_comments: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class KycDocumentORM(Base):
+    __tablename__ = "kyc_documents"
+    __table_args__ = (
+        Index("ix_kyc_documents_customer_created", "customer_id", "created_at"),
+        Index("ix_kyc_documents_status_created", "verification_status", "created_at"),
+        Index("ix_kyc_documents_sha256_hash", "sha256_hash"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    customer_id: Mapped[str] = mapped_column(ForeignKey("customers.id"), index=True)
+    document_type: Mapped[str] = mapped_column(String(64), index=True)
+    original_filename: Mapped[str] = mapped_column(String(255))
+    storage_backend: Mapped[str] = mapped_column(String(32), default="local")
+    storage_key: Mapped[str] = mapped_column(String(512))
+    sha256_hash: Mapped[str] = mapped_column(String(64))
+    mime_type: Mapped[str] = mapped_column(String(128))
+    file_size_bytes: Mapped[int] = mapped_column(Integer)
+    uploaded_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    verification_status: Mapped[str] = mapped_column(String(32), default="pending", index=True)
+    review_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class FloatRequestORM(Base):
     __tablename__ = "float_requests"
     __table_args__ = (

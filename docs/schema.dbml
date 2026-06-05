@@ -43,6 +43,7 @@ TableGroup "PostgreSQL security controls" {
   field_agents
   agents
   customers
+  kyc_documents
   float_requests
   transactions
   event_log
@@ -144,6 +145,33 @@ Table customers [note: 'Forced RLS. Policies: customers_app_rw for agent_app rea
     phone
     (compliance_status, verified_at)
     (name, surname)
+  }
+}
+
+Table kyc_documents [note: 'Forced RLS. KYC image/PDF metadata only. File bytes are stored in local dev storage/kyc and should move to S3, Azure Blob, GCS, or MinIO in production.'] {
+  id varchar(64) [pk]
+  customer_id varchar(64) [not null]
+  document_type varchar(64) [not null]
+  original_filename varchar(255) [not null]
+  storage_backend varchar(32) [not null]
+  storage_key varchar(512) [not null]
+  sha256_hash varchar(64) [not null]
+  mime_type varchar(128) [not null]
+  file_size_bytes integer [not null]
+  uploaded_by varchar(64)
+  verification_status varchar(32) [not null]
+  review_notes text
+  created_at timestamp [not null]
+  reviewed_at timestamp
+
+  indexes {
+    customer_id
+    document_type
+    uploaded_by
+    verification_status
+    sha256_hash
+    (customer_id, created_at)
+    (verification_status, created_at)
   }
 }
 
@@ -535,6 +563,8 @@ Table mart_liquidity_risk [note: 'dbt mart for operations and working-capital da
 
 Ref: users.agent_id > agents.id
 Ref: agents.field_agent_id > field_agents.id
+Ref: kyc_documents.customer_id > customers.id
+Ref: kyc_documents.uploaded_by > users.id
 Ref: float_requests.agent_id > agents.id
 Ref: transactions.agent_id > agents.id
 Ref: transactions.customer_id > customers.id

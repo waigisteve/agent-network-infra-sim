@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import tempfile
 from typing import Any
 
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
@@ -12,6 +13,7 @@ import httpx
 from backend.app.db import SessionLocal, create_all
 from backend.app.main import app
 from backend.app.scripts.seed import seed
+from backend.app.config import settings
 from backend.app.worker import process_stream_message, record_stream_failure
 
 
@@ -135,6 +137,45 @@ def test_kyc_review_updates_status_and_publishes_event() -> None:
     assert response.json()["national_id"].startswith("*")
     assert response.json()["address"] == "masked address"
     assert "customer.kyc_reviewed" in {event["name"] for event in events}
+
+
+def test_kyc_document_upload_stores_file_metadata_and_event() -> None:
+    token = login("reviewer@example.com")
+    with tempfile.TemporaryDirectory() as storage_dir:
+        settings.kyc_storage_path = storage_dir
+        response = request(
+            "POST",
+            "/api/v1/kyc/customers/cust_hamadi/documents",
+            token=token,
+            data={"document_type": "customer_photo"},
+            files={"file": ("face.jpg", b"\xff\xd8\xff\xe0demo-image", "image/jpeg")},
+        )
+        payload = response.json()
+        listed = request("GET", "/api/v1/kyc/customers/cust_hamadi/documents", token=token).json()
+        events = request("GET", "/api/v1/events", token=login()).json()
+
+        assert response.status_code == 200
+        assert payload["customer_id"] == "cust_hamadi"
+        assert payload["document_type"] == "customer_photo"
+        assert payload["storage_backend"] == "local"
+        assert payload["storage_key"].endswith(".jpg")
+        assert payload["file_size_bytes"] == len(b"\xff\xd8\xff\xe0demo-image")
+        assert listed[0]["id"] == payload["id"]
+        assert "customer.kyc_submitted" in {event["name"] for event in events}
+
+
+def test_kyc_document_upload_rejects_unsupported_file_type() -> None:
+    token = login("reviewer@example.com")
+    response = request(
+        "POST",
+        "/api/v1/kyc/customers/cust_hamadi/documents",
+        token=token,
+        data={"document_type": "customer_photo"},
+        files={"file": ("script.exe", b"bad", "application/x-msdownload")},
+    )
+
+    assert response.status_code == 400
+    assert "unsupported content type" in response.json()["detail"]
 
 
 def test_analytics_and_map_endpoints() -> None:

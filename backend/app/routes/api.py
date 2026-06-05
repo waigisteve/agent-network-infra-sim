@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Annotated
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -24,6 +24,7 @@ from backend.app.models import (
     FloatRequestORM,
     FloatReviewRequest,
     KycReviewRequest,
+    KycDocumentORM,
     LoginRequest,
     PartnerFeedIngestionRequest,
     PartnerORM,
@@ -39,6 +40,7 @@ from backend.app.models import (
 )
 from backend.app.security_audit import write_security_audit
 from backend.app.services.float_ops import approve_float_request, reconciliation, reject_float_request
+from backend.app.services.kyc_documents import store_kyc_document, validate_document_type
 from backend.app.services.partner_ingestion import ingest_bank_settlements, ingest_telco_transactions, reconcile_partner_settlement
 from backend.app.services.transactions import create_transaction
 
@@ -164,6 +166,86 @@ async def review_kyc(
     db.commit()
     db.refresh(customer)
     return customer_public_out(customer)
+
+
+def kyc_document_out(document: KycDocumentORM) -> dict[str, object]:
+    return {
+        "id": document.id,
+        "customer_id": document.customer_id,
+        "document_type": document.document_type,
+        "original_filename": document.original_filename,
+        "storage_backend": document.storage_backend,
+        "storage_key": document.storage_key,
+        "sha256_hash": document.sha256_hash,
+        "mime_type": document.mime_type,
+        "file_size_bytes": document.file_size_bytes,
+        "uploaded_by": document.uploaded_by,
+        "verification_status": document.verification_status,
+        "created_at": document.created_at,
+        "reviewed_at": document.reviewed_at,
+    }
+
+
+@router.post("/kyc/customers/{customer_id}/documents")
+async def upload_kyc_document(
+    customer_id: str,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[UserORM, Depends(require_roles(Role.admin, Role.kyc_reviewer))],
+    document_type: Annotated[str, Form()],
+    file: Annotated[UploadFile, File()],
+) -> dict[str, object]:
+    customer = db.get(CustomerORM, customer_id)
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    try:
+        validate_document_type(document_type)
+        data = await file.read()
+        stored = store_kyc_document(customer_id, file.filename or "kyc-document", file.content_type, data)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    document = KycDocumentORM(
+        id=f"kyc_doc_{uuid4().hex[:12]}",
+        customer_id=customer_id,
+        document_type=document_type,
+        original_filename=file.filename or "kyc-document",
+        storage_backend=stored.storage_backend,
+        storage_key=stored.storage_key,
+        sha256_hash=stored.sha256_hash,
+        mime_type=stored.mime_type,
+        file_size_bytes=stored.file_size_bytes,
+        uploaded_by=user.id,
+    )
+    db.add(document)
+    await publisher.publish(
+        db,
+        "customer.kyc_submitted",
+        {
+            "aggregate_type": "customer",
+            "aggregate_id": customer_id,
+            "customer_id": customer_id,
+            "document_id": document.id,
+            "document_type": document.document_type,
+            "mime_type": document.mime_type,
+            "file_size_bytes": document.file_size_bytes,
+            "sha256_hash": document.sha256_hash,
+        },
+    )
+    db.commit()
+    db.refresh(document)
+    return kyc_document_out(document)
+
+
+@router.get("/kyc/customers/{customer_id}/documents")
+async def list_kyc_documents(
+    customer_id: str,
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserORM, Depends(require_roles(Role.admin, Role.field_agent, Role.kyc_reviewer))],
+) -> list[dict[str, object]]:
+    if db.get(CustomerORM, customer_id) is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    documents = db.scalars(select(KycDocumentORM).where(KycDocumentORM.customer_id == customer_id).order_by(KycDocumentORM.created_at.desc())).all()
+    return [kyc_document_out(document) for document in documents]
 
 
 @router.get("/float/requests")

@@ -243,6 +243,7 @@ Managed-platform controls:
 - [API](docs/api.md)
 - [SQL Logic And Lineage](docs/sql-logic.md)
 - [Database Security](docs/database-security.md)
+- [KYC Document Storage](docs/kyc-document-storage.md)
 - [Streaming Reliability](docs/streaming-reliability.md)
 - [SPOF Analysis](docs/spof-analysis.md)
 - [Opareta Role Alignment](docs/opareta-role-alignment.md)

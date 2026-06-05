@@ -44,6 +44,7 @@ def test_protected_get_endpoints_reject_anonymous_requests() -> None:
         "/api/v1/agents",
         "/api/v1/field-agents",
         "/api/v1/customers",
+        "/api/v1/kyc/customers/cust_hamadi/documents",
         "/api/v1/float/requests",
         "/api/v1/float/reconciliation",
         "/api/v1/transactions",
@@ -71,6 +72,12 @@ def test_admin_only_endpoints_reject_non_admin_roles() -> None:
         ("GET", "/api/v1/events", field_token, None),
         ("GET", "/api/v1/stream/readiness", field_token, None),
         ("GET", "/api/v1/stream/dead-letter-events", agent_token, None),
+        (
+            "POST",
+            "/api/v1/kyc/customers/cust_hamadi/documents",
+            field_token,
+            {"document_type": "customer_photo"},
+        ),
         ("POST", "/api/v1/float/requests/fr_001/approve", field_token, {"reviewer": "field"}),
         ("POST", "/api/v1/float/requests/fr_001/reject", agent_token, {"reviewer": "agent"}),
         (
@@ -109,6 +116,7 @@ def test_field_agent_scope_rejects_agent_role() -> None:
         "/api/v1/reports/analytics-snapshots",
         "/api/v1/maps/field-team",
         "/api/v1/partners",
+        "/api/v1/kyc/customers/cust_hamadi/documents",
     ]
 
     for path in field_scope_paths:
@@ -125,6 +133,18 @@ def test_kyc_review_scope_rejects_field_and_agent_roles() -> None:
             json={"customer_id": "cust_hamadi", "status": "approved", "reviewer": "Security Test", "comments": "Not allowed"},
         )
         assert response.status_code == 403
+
+
+def test_kyc_document_upload_scope_rejects_agent_role() -> None:
+    response = request(
+        "POST",
+        "/api/v1/kyc/customers/cust_hamadi/documents",
+        token=login("agent@example.com"),
+        data={"document_type": "customer_photo"},
+        files={"file": ("face.jpg", b"image", "image/jpeg")},
+    )
+
+    assert response.status_code == 403
 
 
 def test_agent_can_only_view_own_agent_report() -> None:

@@ -33,6 +33,8 @@ Masking applies to customer lists, KYC review responses, transaction lists, agen
 - `GET /field-agents`
 - `GET /customers`
 - `POST /kyc/reviews`
+- `POST /kyc/customers/{customer_id}/documents`
+- `GET /kyc/customers/{customer_id}/documents`
 - `GET /float/requests`
 - `POST /float/requests`
 - `POST /float/requests/{id}/approve`
@@ -68,6 +70,8 @@ Public endpoints are limited to liveness/readiness and login. Every operational 
 | `GET /api/v1/field-agents` | Yes | Yes | No | No | Field-management scope. |
 | `GET /api/v1/customers` | Yes | Yes | Yes | Yes | PII is masked in API responses. |
 | `POST /api/v1/kyc/reviews` | Yes | No | No | Yes | KYC decision scope only. |
+| `POST /api/v1/kyc/customers/{customer_id}/documents` | Yes | No | No | Yes | Uploads KYC image/PDF files to local dev storage and stores metadata/hash in PostgreSQL. |
+| `GET /api/v1/kyc/customers/{customer_id}/documents` | Yes | Yes | No | Yes | Lists document metadata only; file bytes are not returned. |
 | `GET /api/v1/float/requests` | Yes | Yes | Yes | Yes | Read-only operational queue. |
 | `POST /api/v1/float/requests` | Yes | No | Yes | No | Agent submissions are forced to the caller's assigned `agent_id`. |
 | `POST /api/v1/float/requests/{id}/approve` | Yes | No | No | No | Admin approval only. |
