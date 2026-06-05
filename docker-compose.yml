@@ -48,6 +48,8 @@ services:
       - --advertise-kafka-addr=internal://redpanda:9092,external://127.0.0.1:19092
     ports:
       - "19092:19092"
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
 
   redpanda-console:
     image: docker.redpanda.com/redpandadata/console:v2.7.2
@@ -215,13 +217,15 @@ services:
     environment:
       AIRFLOW__CORE__EXECUTOR: SequentialExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow-metadata/airflow.db
       AIRFLOW__WEBSERVER__SECRET_KEY: local-airflow-secret-change-me
       AIRFLOW_CONN_AGENT_NETWORK_API: http://api:8000
       DBT_PROFILES_DIR: /opt/airflow/dbt/profiles
     ports:
       - "18080:8080"
     volumes:
+      - airflow-metadata:/opt/airflow-metadata
+      - airflow-logs:/opt/airflow/logs
       - ./airflow/dags:/opt/airflow/dags
       - ./dbt:/opt/airflow/dbt
     depends_on:
@@ -247,5 +251,8 @@ services:
 
 volumes:
   postgres-data:
+  redpanda-data:
   minio-data:
+  airflow-metadata:
+  airflow-logs:
   superset-home:

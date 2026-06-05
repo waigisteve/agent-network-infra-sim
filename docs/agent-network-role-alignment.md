@@ -44,9 +44,9 @@ The KYC document layer models realistic customer-evidence handling:
 
 | Stack/capability | Current state | Recommended next step |
 | --- | --- | --- |
-| Airflow | Optional Compose service and first DAG scaffold implemented | Add file sensors, SLA alerts, and production-grade retries per partner feed. |
+| Airflow | Default Compose service, persistent local metadata/log volumes, and first DAG scaffold implemented | Add file sensors, SLA alerts, and production-grade retries per partner feed. |
 | dbt | Local Postgres dbt project implemented with staging, intermediate, fact, dimension, mart models, and tests | Add incremental models, snapshots, docs site, and BigQuery/Redshift execution validation. |
-| Superset | Optional Compose service and RLS/dashboard guidance implemented | Bootstrap saved databases, datasets, charts, dashboards, and partner roles. |
+| Superset | Default Compose service, persistent local metadata volume, starter dashboards, and RLS guidance implemented | Bootstrap richer saved databases, datasets, charts, dashboards, and partner roles. |
 | BigQuery | Documented only | Add optional dbt BigQuery profile and deployment notes for GCS landing plus BigQuery warehouse. |
 | Redshift | Documented only | Add optional dbt Redshift profile and AWS S3/Redshift Serverless deployment notes. |
 | Real SFTP/API adapters | Simulated in service layer | Add file-watcher or scripted CSV ingestion for bank settlement drops and API polling stubs. |

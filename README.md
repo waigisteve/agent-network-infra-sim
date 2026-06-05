@@ -20,6 +20,10 @@ It includes:
 - Alembic migrations
 - Docker Compose local stack
 
+Local runtime state is persisted through named Docker volumes for PostgreSQL,
+MinIO, Redpanda, Airflow, and Superset. See
+[`docs/runtime-persistence.md`](docs/runtime-persistence.md).
+
 ## Quick Start
 
 ```bash
@@ -195,7 +199,7 @@ Seed data creates the partner and contract metadata. Admin users can ingest samp
 - `POST /api/v1/integrations/bank-settlements`
 - `POST /api/v1/integrations/reconcile-settlement`
 
-The ingestion layer records source references, loaded/rejected counts, error summaries, hashed customer identifiers, raw payloads, settlement totals, and reconciliation exceptions. This is the local implementation path for telco/bank feeds before adding Airflow, dbt, Superset, BigQuery, or Redshift.
+The ingestion layer records source references, loaded/rejected counts, error summaries, hashed customer identifiers, raw payloads, settlement totals, and reconciliation exceptions. This is the local implementation path for telco/bank feeds before promoting the Airflow, dbt, and Superset scaffolding to production-grade scheduled adapters and managed analytics infrastructure.
 
 ## Analytics Stack
 
@@ -304,6 +308,7 @@ Managed-platform controls:
 - [SQL Logic And Lineage](docs/sql-logic.md)
 - [Database Security](docs/database-security.md)
 - [KYC Document Storage](docs/kyc-document-storage.md)
+- [Runtime Persistence](docs/runtime-persistence.md)
 - [Streaming Reliability](docs/streaming-reliability.md)
 - [SPOF Analysis](docs/spof-analysis.md)
 - [Agent Network Role Alignment](docs/agent-network-role-alignment.md)

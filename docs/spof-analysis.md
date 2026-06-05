@@ -8,13 +8,13 @@ This analysis maps single points of failure to the current local stack and the p
 | --- | --- | --- | --- | --- | --- |
 | PostgreSQL | One `postgres` container and one `postgres-data` volume. | Auth, API writes, audit logs, partner ingestion, reconciliation, and dbt sources stop. | Healthcheck, RLS, SCRAM, encrypted backup script. | Managed PostgreSQL HA, automated backups, PITR, restore drill, private networking, disk monitoring. | P0 |
 | API | One FastAPI container on port `8000`. | Frontend, partner ingestion, auth, audit endpoint, and reporting APIs unavailable. | `/health`, `/ready`, API tests, `make platform-check`. | Multiple API replicas behind gateway/load balancer, stateless app runtime, rate limits, request timeouts. | P0 |
-| Redpanda/Kafka | One Redpanda broker. | Event stream and worker processing stop; analytics freshness degrades. | Local broker check and persisted `event_log`. | Broker cluster or managed Kafka, replicated topics, consumer lag alerts, replay from persisted event log. | P1 |
+| Redpanda/Kafka | One Redpanda broker and one `redpanda-data` volume. | Event stream and worker processing stop; analytics freshness degrades. | Local broker check, broker data volume, and persisted `event_log`. | Broker cluster or managed Kafka, replicated topics, consumer lag alerts, replay from persisted event log. | P1 |
 | Worker | One worker process. | Analytics snapshots and event-derived jobs stop updating. | `worker_errors` table. | Worker heartbeat, readiness check, restart policy, idempotent processing, scalable consumer group. | P1 |
 | Docker host | All services run on one developer machine. | Total local outage. | Local simulation only. | Separate runtime nodes or managed container platform. | P1 |
 | Backup storage | Encrypted backups are local files unless moved. | Host loss can remove both database and backups. | AES-256 encrypted dump. | Off-host/object storage, retention policy, restore validation, RPO/RTO targets. | P0 |
 | Secrets | `.env` stores local secrets. | Secret leak affects database and JWT security. | `.env.example` only committed. | Secret manager, rotation, OIDC/JWKS, no static production JWT secret in files. | P1 |
 | Frontend | One Vite dev container. | UI unavailable, although API may still work. | Local dev server. | Static asset hosting/CDN or replicated frontend service. | P2 |
-| Airflow | Single standalone Airflow container with SQLite metadata. | Scheduled ingestion/dbt orchestration unavailable. | Default Compose service and manual commands. | Managed Airflow or HA executor with external metadata DB. | P2 |
+| Airflow | Single standalone Airflow container with SQLite metadata in `airflow-metadata` and task logs in `airflow-logs`. | Scheduled ingestion/dbt orchestration unavailable. | Default Compose service, persisted local metadata/log volumes, and manual commands. | Managed Airflow or HA executor with external metadata DB and durable remote logs. | P2 |
 | Superset | Single Superset container with local metadata volume. | BI dashboards unavailable. | Default Compose service and bootstrap scripts. | External metadata DB, exported dashboard assets, HA deployment, backups. | P2 |
 
 ## Highest-Risk Failure Modes
@@ -49,7 +49,10 @@ Required next steps:
 
 ### Redpanda/Kafka
 
-The local broker provides Kafka-compatible semantics but has no replication. The persisted `event_log` lowers the blast radius because events can be replayed later if a replay tool is added.
+The local broker provides Kafka-compatible semantics and now persists broker data
+to `redpanda-data`, but it still has no replication. The persisted PostgreSQL
+`event_log` lowers the blast radius because business events can be replayed
+later if a replay tool is added.
 
 Required next steps:
 
@@ -112,4 +115,4 @@ Before calling a production design credible:
 - Kafka has replication or managed equivalent.
 - Worker freshness and consumer lag are monitored.
 - Backups are stored off-host with retention.
-- Airflow/Superset metadata stores are backed up or managed.
+- Airflow/Superset metadata stores and Airflow task logs are backed up or managed.

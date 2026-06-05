@@ -66,15 +66,16 @@ Use Postgres `jsonb` plus GIN indexes for `event_log.payload` and `analytics_sna
 - Security audit middleware and admin-only audit endpoint for failed login, unauthorized, and forbidden attempts.
 - PostgreSQL operational database.
 - MinIO object storage for KYC image/PDF file bytes, with PostgreSQL retaining metadata, hashes, and storage keys; `storage/kyc` remains an explicit local fallback for tests/development.
-- Redpanda Kafka-compatible broker for domain events.
+- Redpanda Kafka-compatible broker for domain events, with local broker data persisted in the `redpanda-data` Docker volume.
 - Worker process for analytics materialization, consumer offset tracking, and dead-letter capture.
 - Named Kafka monitor consumers for analytics, fraud, liquidity, and reconciliation visibility in Redpanda Console.
 - Alembic migrations for schema changes.
 - Partner feed contracts and ingestion audit tables for telco/bank integration simulation.
 - Reconciliation exception workflow for settlement mismatches.
 - dbt analytics project for staging, intermediate, fact, dimension, and mart models.
-- Airflow service for ingestion/reconciliation/dbt orchestration.
+- Airflow service for ingestion/reconciliation/dbt orchestration, with local metadata and task logs stored in named Docker volumes.
 - Superset service for governed dashboards and partner-facing RLS.
+- Local runtime persistence for PostgreSQL, MinIO, Redpanda, Airflow metadata, and Superset metadata is documented in [`runtime-persistence.md`](runtime-persistence.md).
 - Database security controls: owner/app/read-only PostgreSQL roles, SCRAM-SHA-256 authentication, `pg_hba.conf` network rules, forced RLS policies, encrypted logical backups, and hosted pgAudit/encryption-at-rest requirements.
 - SPOF controls: documented SPOF register, encrypted backup creation, and restore drill into a temporary PostgreSQL database.
 
