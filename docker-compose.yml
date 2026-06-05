@@ -211,7 +211,6 @@ services:
       context: .
       dockerfile: airflow/Dockerfile
     restart: unless-stopped
-    profiles: ["orchestration"]
     env_file: .env
     environment:
       AIRFLOW__CORE__EXECUTOR: SequentialExecutor
@@ -233,7 +232,6 @@ services:
   superset:
     image: apache/superset:4.0.2
     restart: unless-stopped
-    profiles: ["analytics"]
     env_file: .env
     environment:
       SUPERSET_SECRET_KEY: local-superset-secret-change-me

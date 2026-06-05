@@ -13,8 +13,8 @@ It includes:
 - Partner data contracts for telco transaction feeds and bank settlement files
 - Contract-backed ingestion run auditing and settlement reconciliation exceptions
 - dbt analytics project for staging, intermediate, fact, dimension, and mart models
-- Optional Airflow orchestration profile for ingestion, reconciliation, and dbt builds
-- Optional Superset analytics profile for governed BI dashboards
+- Airflow orchestration for ingestion, reconciliation, and dbt builds
+- Superset analytics service for governed BI dashboards
 - React/Vite frontend
 - JWT role-based auth
 - Alembic migrations
@@ -138,7 +138,7 @@ Run the full local process for 15 minutes:
 make demo-e2e
 ```
 
-The script starts the core, analytics, and orchestration Docker profiles; applies migrations; seeds deterministic data; builds dbt marts; bootstraps Superset dashboards; unpauses/triggers the Airflow DAG; runs continuous Kafka/event simulation; and repeatedly exercises the API endpoints used by the frontend.
+The script starts the local stack, applies migrations, seeds deterministic data, builds dbt marts, bootstraps Superset dashboards, unpauses/triggers the Airflow DAG, runs continuous Kafka/event simulation, and repeatedly exercises the API endpoints used by the frontend.
 
 During the run, watch:
 
@@ -162,7 +162,7 @@ After starting the local stack, run:
 make platform-check
 ```
 
-The check validates Docker service state, API liveness/readiness, seeded admin login, protected API access, frontend availability, Kafka external port reachability, optional Redpanda Console/Airflow/Superset access, and dbt project structure. Optional analytics and orchestration services are reported as `SKIP` when they are not running.
+The check validates Docker service state, API liveness/readiness, seeded admin login, protected API access, frontend availability, Kafka external port reachability, Redpanda Console, Airflow, Superset, and dbt project structure.
 
 If a browser returns `127.0.0.1 refused to connect`, first confirm the containers
 are present and running:
@@ -199,7 +199,7 @@ The ingestion layer records source references, loaded/rejected counts, error sum
 
 ## Analytics Stack
 
-Start optional analytics services:
+Superset now starts with the default Docker stack. The `analytics` target remains useful for explicitly running the dbt container and refreshing analytics assets:
 
 ```bash
 make analytics
@@ -211,7 +211,7 @@ Run dbt locally through Docker:
 make dbt-build
 ```
 
-Start optional Airflow orchestration:
+Airflow now starts with the default Docker stack. The `orchestration` target remains as a direct convenience command:
 
 ```bash
 make orchestration

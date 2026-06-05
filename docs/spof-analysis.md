@@ -14,8 +14,8 @@ This analysis maps single points of failure to the current local stack and the p
 | Backup storage | Encrypted backups are local files unless moved. | Host loss can remove both database and backups. | AES-256 encrypted dump. | Off-host/object storage, retention policy, restore validation, RPO/RTO targets. | P0 |
 | Secrets | `.env` stores local secrets. | Secret leak affects database and JWT security. | `.env.example` only committed. | Secret manager, rotation, OIDC/JWKS, no static production JWT secret in files. | P1 |
 | Frontend | One Vite dev container. | UI unavailable, although API may still work. | Local dev server. | Static asset hosting/CDN or replicated frontend service. | P2 |
-| Airflow | Optional standalone Airflow with SQLite metadata. | Scheduled ingestion/dbt orchestration unavailable. | Optional profile, manual commands still exist. | Managed Airflow or HA executor with external metadata DB. | P2 |
-| Superset | Optional single Superset container with local metadata volume. | BI dashboards unavailable. | Optional profile and bootstrap scripts. | External metadata DB, exported dashboard assets, HA deployment, backups. | P2 |
+| Airflow | Single standalone Airflow container with SQLite metadata. | Scheduled ingestion/dbt orchestration unavailable. | Default Compose service and manual commands. | Managed Airflow or HA executor with external metadata DB. | P2 |
+| Superset | Single Superset container with local metadata volume. | BI dashboards unavailable. | Default Compose service and bootstrap scripts. | External metadata DB, exported dashboard assets, HA deployment, backups. | P2 |
 
 ## Highest-Risk Failure Modes
 

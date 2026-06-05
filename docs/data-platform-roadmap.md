@@ -41,7 +41,7 @@ flowchart TB
 - PostgreSQL least-privilege, RLS, SCRAM, TLS configuration, and encrypted backup posture.
 - dbt project with staging, intermediate, fact, dimension, and mart models.
 - Airflow DAG scaffold for partner ingestion, settlement reconciliation, and dbt builds.
-- Superset optional service configuration with dashboard/RLS guidance.
+- Superset service configuration with dashboard/RLS guidance.
 
 ## dbt Models
 
@@ -89,7 +89,7 @@ Implemented dbt tests:
 
 Superset should use partner-specific roles and row-level filters so external users only see records for their partner/country.
 
-Superset is available through the optional `analytics` Compose profile and should be connected to the dbt mart schemas after `make dbt-build` succeeds.
+Superset starts with the default Compose stack and should be connected to the dbt mart schemas after `make dbt-build` succeeds.
 
 ## Cloud Deployment Path
 

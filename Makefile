@@ -12,10 +12,10 @@ down:
 	docker compose down
 
 analytics:
-	docker compose --profile analytics up -d dbt superset
+	docker compose up -d superset
 
 orchestration:
-	docker compose --profile orchestration up -d airflow
+	docker compose up -d airflow
 
 dbt-build:
 	docker compose --profile analytics run --rm dbt build

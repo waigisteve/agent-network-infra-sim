@@ -162,8 +162,18 @@ def check_optional_http(name: str, url: str, timeout_seconds: int) -> CheckResul
     return CheckResult(name, "skip", f"optional service returned HTTP {status}", required=False)
 
 
+def check_required_http(name: str, url: str, timeout_seconds: int) -> CheckResult:
+    try:
+        status, _ = http_text(url, timeout_seconds)
+    except Exception as exc:
+        return CheckResult(name, "fail", f"{url} not reachable: {exc}")
+    if 200 <= status < 500:
+        return CheckResult(name, "ok", f"{url} reachable")
+    return CheckResult(name, "fail", f"{url} returned HTTP {status}")
+
+
 def check_docker_services() -> CheckResult:
-    expected = {"postgres", "redpanda", "minio", "api", "worker", "frontend"}
+    expected = {"postgres", "redpanda", "minio", "api", "worker", "frontend", "airflow", "superset"}
     try:
         process = subprocess.run(
             ["docker", "compose", "ps", "--services", "--status", "running"],
@@ -209,8 +219,8 @@ def collect_checks(args: argparse.Namespace) -> list[CheckResult]:
         check_tcp_port("minio.s3", args.minio_host, args.minio_port, args.timeout_seconds),
         check_optional_http("redpanda.console", args.redpanda_console_url, args.timeout_seconds),
         check_optional_http("minio.console", args.minio_console_url, args.timeout_seconds),
-        check_optional_http("airflow", args.airflow_url, args.timeout_seconds),
-        check_optional_http("superset", args.superset_url, args.timeout_seconds),
+        check_required_http("airflow", args.airflow_url, args.timeout_seconds),
+        check_required_http("superset", args.superset_url, args.timeout_seconds),
         check_dbt_project(repo_root),
     ]
 

@@ -52,8 +52,8 @@ gantt
     section Bootstrap
     Load .env and compose config          :done, env, 0, 10s
     Start core containers                 :done, core, after env, 60s
-    Start analytics/orchestration profiles:done, profiles, after core, 60s
-    Wait for API readiness                :done, ready, after profiles, 30s
+    Start Airflow/Superset default services:done, ui_services, after core, 60s
+    Wait for API readiness                :done, ready, after ui_services, 30s
 
     section Database
     Run Alembic migrations                :done, migrate, after ready, 20s

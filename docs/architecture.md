@@ -73,8 +73,8 @@ Use Postgres `jsonb` plus GIN indexes for `event_log.payload` and `analytics_sna
 - Partner feed contracts and ingestion audit tables for telco/bank integration simulation.
 - Reconciliation exception workflow for settlement mismatches.
 - dbt analytics project for staging, intermediate, fact, dimension, and mart models.
-- Optional Airflow service for ingestion/reconciliation/dbt orchestration.
-- Optional Superset service for governed dashboards and partner-facing RLS.
+- Airflow service for ingestion/reconciliation/dbt orchestration.
+- Superset service for governed dashboards and partner-facing RLS.
 - Database security controls: owner/app/read-only PostgreSQL roles, SCRAM-SHA-256 authentication, `pg_hba.conf` network rules, forced RLS policies, encrypted logical backups, and hosted pgAudit/encryption-at-rest requirements.
 - SPOF controls: documented SPOF register, encrypted backup creation, and restore drill into a temporary PostgreSQL database.
 
@@ -90,7 +90,7 @@ Use Postgres `jsonb` plus GIN indexes for `event_log.payload` and `analytics_sna
 8. Worker materializes analytics snapshots, records consumer offsets, and dead-letters malformed or failed stream messages.
 9. `GET /api/v1/reports/analytics-snapshots` exposes the latest materialized worker outputs for admin and field-operations reporting.
 10. Partner feeds are validated against versioned contracts, loaded into raw integration tables, and reconciled against settlement totals.
-11. Airflow orchestrates partner ingestion, reconciliation, and dbt builds when the `orchestration` profile is enabled.
+11. Airflow orchestrates partner ingestion, reconciliation, and dbt builds as part of the default local stack.
 12. dbt transforms operational/integration tables into governed analytics marts.
 13. Superset connects to mart schemas for internal dashboards and partner-scoped reporting.
 
