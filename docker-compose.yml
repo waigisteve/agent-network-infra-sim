@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:16
+    restart: unless-stopped
     command:
       - postgres
       - -c
@@ -33,6 +34,7 @@ services:
 
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:v24.2.10
+    restart: unless-stopped
     command:
       - redpanda
       - start
@@ -49,6 +51,7 @@ services:
 
   redpanda-console:
     image: docker.redpanda.com/redpandadata/console:v2.7.2
+    restart: unless-stopped
     environment:
       KAFKA_BROKERS: redpanda:9092
     ports:
@@ -58,6 +61,7 @@ services:
 
   minio:
     image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-agentminio}
@@ -84,6 +88,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    restart: unless-stopped
     env_file: .env
     environment:
       KYC_STORAGE_BACKEND: ${KYC_STORAGE_BACKEND:-minio}
@@ -111,6 +116,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    restart: unless-stopped
     env_file: .env
     command: python -m backend.app.worker
     depends_on:
@@ -125,6 +131,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    restart: unless-stopped
     env_file: .env
     command: python -m backend.app.scripts.monitor_consumer --group-id analytics-worker --topics transaction-events,commission-events,float-events
     depends_on:
@@ -136,6 +143,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    restart: unless-stopped
     env_file: .env
     command: python -m backend.app.scripts.monitor_consumer --group-id fraud-monitor --topics transaction-events,kyc-events
     depends_on:
@@ -147,6 +155,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    restart: unless-stopped
     env_file: .env
     command: python -m backend.app.scripts.monitor_consumer --group-id liquidity-monitor --topics float-events,transaction-events
     depends_on:
@@ -158,6 +167,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    restart: unless-stopped
     env_file: .env
     command: python -m backend.app.scripts.monitor_consumer --group-id reconciliation-monitor --topics transaction-events,commission-events
     depends_on:
@@ -169,6 +179,7 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+    restart: unless-stopped
     environment:
       VITE_API_BASE_URL: http://127.0.0.1:8000
     ports:
@@ -199,6 +210,7 @@ services:
     build:
       context: .
       dockerfile: airflow/Dockerfile
+    restart: unless-stopped
     profiles: ["orchestration"]
     env_file: .env
     environment:
@@ -220,6 +232,7 @@ services:
 
   superset:
     image: apache/superset:4.0.2
+    restart: unless-stopped
     profiles: ["analytics"]
     env_file: .env
     environment:

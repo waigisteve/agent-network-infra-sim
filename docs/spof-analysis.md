@@ -68,7 +68,7 @@ Required next steps:
 - add worker heartbeat
 - add worker freshness to `/ready`
 - add idempotent snapshot writes
-- add restart policy
+- extend beyond the local `restart: unless-stopped` policy with production worker health probes and autoscaling
 
 ## CAP Trade-Offs
 

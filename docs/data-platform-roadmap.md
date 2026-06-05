@@ -119,5 +119,5 @@ For partners that cannot expose public APIs:
 3. Files land in cloud storage or a restricted ingestion directory.
 4. Ingestion validates against a versioned contract.
 5. Raw data is stored immutably, then normalized into canonical tables.
-6. Reconciliation checks compare partner totals to Opareta operational records.
+6. Reconciliation checks compare partner totals to internal operational records.
 7. Partner-facing dashboards expose only authorized, masked, and tested data.

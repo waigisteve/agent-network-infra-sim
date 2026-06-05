@@ -17,11 +17,18 @@ PY
 make up
 ```
 
+`make up` runs `docker compose up -d --build`. Long-running containers are
+configured with `restart: unless-stopped`, so they are expected to come back
+when Docker Desktop or the Docker engine starts. This only applies to containers
+that already exist. If you use `docker compose down`, recreate them with
+`make up`.
+
 Open:
 
 - Frontend: `http://127.0.0.1:5173`
 - API docs: `http://127.0.0.1:8000/docs`
 - Redpanda Console: `http://127.0.0.1:18081`
+- MinIO Console: `http://127.0.0.1:9001`
 
 Container endpoints exposed for local testing:
 
@@ -33,12 +40,27 @@ Container endpoints exposed for local testing:
 | Health | `http://127.0.0.1:8000/health` | Liveness check |
 | Readiness | `http://127.0.0.1:8000/ready` | Database/Kafka readiness |
 | Redpanda Console | `http://127.0.0.1:18081` | Kafka topic browser |
+| MinIO Console | `http://127.0.0.1:9001` | KYC object-storage browser |
 | Kafka bootstrap | `127.0.0.1:19092` | External Kafka client endpoint |
 | PostgreSQL | `127.0.0.1:${POSTGRES_HOST_PORT:-55432}` | Local database endpoint |
+| MinIO S3 API | `127.0.0.1:9000` | S3-compatible object-storage endpoint |
 
-The frontend, API, and Redpanda Console are HTTP endpoints. Kafka and PostgreSQL are TCP service endpoints, so they are intentionally documented without `http://` or `https://`.
+The frontend, API, Redpanda Console, and MinIO Console are HTTP endpoints.
+Kafka, PostgreSQL, and the MinIO S3 API are TCP/service endpoints, so they are
+intentionally documented without `http://` or `https://`.
 
 The PostgreSQL host port defaults to `55432` to avoid conflicts with local database installs on `5432`.
+
+MinIO console login uses `MINIO_ROOT_USER` and `MINIO_ROOT_PASSWORD` from
+`.env`; the local defaults are `agentminio` and
+`local-agent-minio-password`. If `http://127.0.0.1:9001` refuses the
+connection, run:
+
+```bash
+docker compose up -d minio minio-init api
+docker compose ps
+make platform-check
+```
 
 ## Seed Users
 

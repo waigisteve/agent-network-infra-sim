@@ -1,6 +1,6 @@
-# Opareta Role Alignment
+# Agent Network Role Alignment
 
-This project is shaped around the same operating problem described in the Opareta Head of Data role: mobile money agent-network data from agents, field teams, telcos, and banks must be ingested, reconciled, governed, transformed, and exposed as trusted operational and customer-facing data products.
+This project is shaped around a realistic mobile-money and agent-banking data leadership problem: agent-network data from agents, field teams, telcos, banks, KYC reviewers, and object-storage evidence flows must be ingested, reconciled, governed, transformed, and exposed as trusted operational and customer-facing data products.
 
 ## Already Demonstrated
 
@@ -11,7 +11,7 @@ This project is shaped around the same operating problem described in the Oparet
 | Kafka-style streaming | Redpanda broker, domain topics, persisted event log, worker consumer, and simulation stream. |
 | Postgres operations | Runtime and migration roles, forced RLS, SCRAM configuration, pg_hba.conf, TLS connection settings, encrypted logical backups, and migration-controlled schema changes. |
 | Customer-facing product direction | React dashboards for operations, reporting, KYC, field map, audit log, and agent workflow. |
-| Cloud-native direction | Docker Compose local stack and architecture documentation for managed Postgres, private networking, hosted audit, and cloud data platform controls. |
+| Cloud-native direction | Docker Compose local stack and architecture documentation for managed Postgres, MinIO/object storage, private networking, hosted audit, and cloud data platform controls. |
 
 ## Newly Added Integration Layer
 
@@ -31,6 +31,15 @@ The implementation uses JSON contracts in `contracts/`:
 
 This reflects the production pattern expected in telco/bank integrations: raw immutable receipt, contract validation, deduplication, canonical fields, reconciliation, and auditability.
 
+## KYC Evidence Layer
+
+The KYC document layer models realistic customer-evidence handling:
+
+- `kyc_documents` stores searchable metadata, hash, storage backend, storage key, status, uploader, and timestamps.
+- MinIO stores KYC image/PDF file bytes in a private local bucket.
+- PostgreSQL remains the source of metadata, constraints, audit relationships, and review status.
+- The storage adapter can be swapped to S3, Azure Blob Storage, or Google Cloud Storage in hosted production.
+
 ## Still Missing Or Only Documented
 
 | Stack/capability | Current state | Recommended next step |
@@ -49,7 +58,7 @@ This reflects the production pattern expected in telco/bank integrations: raw im
 
 The strongest framing is:
 
-> I treated the project as a data infrastructure and data product problem, not just a reporting problem. It models operational agent-network data, Kafka-style events, Postgres governance, KYC/PII controls, float liquidity, commissions, partner feed contracts, ingestion run auditability, settlement reconciliation, dbt marts, Airflow orchestration, and Superset BI scaffolding. The next maturity step is production-grade partner adapters, saved dashboards, and cloud warehouse validation on BigQuery or Redshift.
+> I treated the project as a data infrastructure and data product problem, not just a reporting problem. It models operational agent-network data, Kafka-style events, Postgres governance, KYC/PII controls, MinIO-backed KYC evidence storage, float liquidity, commissions, partner feed contracts, ingestion run auditability, settlement reconciliation, dbt marts, Airflow orchestration, and Superset BI scaffolding. The next maturity step is production-grade partner adapters, saved dashboards, and cloud warehouse validation on BigQuery or Redshift.
 
 ## Practical Learning Roadmap
 

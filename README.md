@@ -28,6 +28,12 @@ cp .env.example .env
 make up
 ```
 
+`make up` runs `docker compose up -d --build`. Long-running services use
+`restart: unless-stopped`, so after this command has created the containers
+they should start again when Docker Desktop or the Docker engine starts. If you
+run `docker compose down`, the containers are removed and must be recreated with
+`make up`.
+
 Open:
 
 - Frontend: `http://127.0.0.1:5173`
@@ -158,6 +164,24 @@ make platform-check
 
 The check validates Docker service state, API liveness/readiness, seeded admin login, protected API access, frontend availability, Kafka external port reachability, optional Redpanda Console/Airflow/Superset access, and dbt project structure. Optional analytics and orchestration services are reported as `SKIP` when they are not running.
 
+If a browser returns `127.0.0.1 refused to connect`, first confirm the containers
+are present and running:
+
+```bash
+docker compose ps
+make platform-check
+```
+
+For MinIO specifically, recreate the local object-storage services:
+
+```bash
+docker compose up -d minio minio-init api
+```
+
+Open the MinIO console at `http://127.0.0.1:9001`. Use
+`MINIO_ROOT_USER` and `MINIO_ROOT_PASSWORD` from `.env`; the local defaults are
+`agentminio` and `local-agent-minio-password`.
+
 ## Partner Integration Simulation
 
 The repo includes versioned partner contracts that model telco and bank integrations:
@@ -250,7 +274,7 @@ Managed-platform controls:
 - [KYC Document Storage](docs/kyc-document-storage.md)
 - [Streaming Reliability](docs/streaming-reliability.md)
 - [SPOF Analysis](docs/spof-analysis.md)
-- [Opareta Role Alignment](docs/opareta-role-alignment.md)
+- [Agent Network Role Alignment](docs/agent-network-role-alignment.md)
 - [Data Platform Roadmap](docs/data-platform-roadmap.md)
 - [Implementation Process](docs/implementation-process.md)
 - [Platform Implementation Gantt](docs/platform-implementation-gantt.md)
