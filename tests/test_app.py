@@ -4,9 +4,11 @@ import asyncio
 import os
 import tempfile
 from typing import Any
+from unittest.mock import MagicMock, patch
 
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ["KAFKA_ENABLED"] = "false"
+os.environ["KYC_STORAGE_BACKEND"] = "local"
 
 import httpx
 
@@ -14,6 +16,7 @@ from backend.app.db import SessionLocal, create_all
 from backend.app.main import app
 from backend.app.scripts.seed import seed
 from backend.app.config import settings
+from backend.app.services.kyc_documents import store_kyc_document_minio
 from backend.app.worker import process_stream_message, record_stream_failure
 
 
@@ -176,6 +179,25 @@ def test_kyc_document_upload_rejects_unsupported_file_type() -> None:
 
     assert response.status_code == 400
     assert "unsupported content type" in response.json()["detail"]
+
+
+def test_kyc_document_minio_adapter_writes_object_metadata() -> None:
+    client = MagicMock()
+    client.bucket_exists.return_value = True
+    settings.minio_bucket = "kyc-documents"
+    with patch("backend.app.services.kyc_documents.Minio", return_value=client):
+        stored = store_kyc_document_minio("cust_hamadi", "face.jpg", "image/jpeg", b"\xff\xd8\xff\xe0demo-image")
+
+    assert stored.storage_backend == "minio"
+    assert stored.storage_key.endswith(".jpg")
+    client.put_object.assert_called_once()
+    _, args, kwargs = client.put_object.mock_calls[0]
+    bucket = args[0]
+    object_name = args[1]
+    assert bucket == "kyc-documents"
+    assert object_name == stored.storage_key
+    assert kwargs["content_type"] == "image/jpeg"
+    assert kwargs["metadata"]["sha256"] == stored.sha256_hash
 
 
 def test_analytics_and_map_endpoints() -> None:

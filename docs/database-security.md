@@ -12,10 +12,12 @@ This repo implements local PostgreSQL hardening for the Docker stack and documen
 | Health | `http://127.0.0.1:8000/health` | Liveness check |
 | Readiness | `http://127.0.0.1:8000/ready` | Database/Kafka/security-audit readiness |
 | Redpanda Console | `http://127.0.0.1:18081` | Kafka topic browser |
+| MinIO Console | `http://127.0.0.1:9001` | Local object-storage console for KYC files |
 | Kafka external bootstrap | `127.0.0.1:19092` | External Kafka clients |
+| MinIO S3-compatible API | `127.0.0.1:9000` | Local object-storage API endpoint |
 | PostgreSQL | `127.0.0.1:${POSTGRES_HOST_PORT:-55432}` | Local DB endpoint bound to loopback |
 
-Use `http://`, not `https://`, for local browser/API endpoints. Kafka and PostgreSQL are not HTTP services, so client tools should use their host/port connection strings instead of browser URLs.
+Use `http://`, not `https://`, for local browser/API endpoints. Kafka, MinIO S3 API, and PostgreSQL client connections should use their host/port connection strings instead of browser URLs.
 
 ## Roles
 
@@ -50,7 +52,7 @@ Existing volumes that were created before `POSTGRES_AUDIT_USER` was introduced m
 | Encryption at rest | Provider/disk-layer requirement | Local Docker volume encryption depends on host disk encryption. Hosted PostgreSQL must enable storage encryption at the provider layer. |
 | TLS in transit | `DATABASE_SSL_MODE`, `DATABASE_SSL_ROOT_CERT`, `DATABASE_SSL_CERT`, `DATABASE_SSL_KEY` | Production should use `verify-full`. Local Docker defaults to `prefer` because no private key material is committed. |
 | Security audit logging | `security_audit_log` table, auth failure writes, role-forbidden writes, and 401/403 middleware capture | Failed login attempts and blocked API access are queryable by admins through `GET /api/v1/security/audit-log`. |
-| KYC document storage split | `kyc_documents` stores metadata/hash/storage keys; `storage/kyc` stores local dev file bytes | PostgreSQL remains queryable and auditable without storing large image blobs. Production should replace local storage with S3, Azure Blob, GCS, or MinIO plus signed URL access. |
+| KYC document storage split | `kyc_documents` stores metadata/hash/storage keys; MinIO stores local object bytes | PostgreSQL remains queryable and auditable without storing large image blobs. Hosted production should replace local MinIO with S3, Azure Blob, or GCS plus signed URL access. |
 
 ## Schema State Effects
 

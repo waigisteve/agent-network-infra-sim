@@ -148,7 +148,7 @@ Table customers [note: 'Forced RLS. Policies: customers_app_rw for agent_app rea
   }
 }
 
-Table kyc_documents [note: 'Forced RLS. KYC image/PDF metadata only. File bytes are stored in local dev storage/kyc and should move to S3, Azure Blob, GCS, or MinIO in production.'] {
+Table kyc_documents [note: 'Forced RLS. KYC image/PDF metadata only. File bytes are stored in MinIO locally, with storage/kyc available as an explicit fallback.'] {
   id varchar(64) [pk]
   customer_id varchar(64) [not null]
   document_type varchar(64) [not null]

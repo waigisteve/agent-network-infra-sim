@@ -56,17 +56,50 @@ services:
     depends_on:
       - redpanda
 
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-agentminio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-local-agent-minio-password}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    env_file: .env
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 $${MINIO_ROOT_USER:-agentminio} $${MINIO_ROOT_PASSWORD:-local-agent-minio-password}; do sleep 2; done;
+      mc mb --ignore-existing local/$${MINIO_BUCKET:-kyc-documents};
+      mc anonymous set none local/$${MINIO_BUCKET:-kyc-documents};
+      "
+
   api:
     build:
       context: .
       dockerfile: backend/Dockerfile
     env_file: .env
+    environment:
+      KYC_STORAGE_BACKEND: ${KYC_STORAGE_BACKEND:-minio}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-agentminio}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-local-agent-minio-password}
+      MINIO_BUCKET: ${MINIO_BUCKET:-kyc-documents}
+      MINIO_SECURE: ${MINIO_SECURE:-false}
     ports:
       - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
       redpanda:
+        condition: service_started
+      minio:
         condition: service_started
     volumes:
       - ./backend:/app/backend
@@ -203,4 +236,5 @@ services:
 
 volumes:
   postgres-data:
+  minio-data:
   superset-home:

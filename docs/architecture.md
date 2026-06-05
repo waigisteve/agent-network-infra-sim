@@ -65,7 +65,7 @@ Use Postgres `jsonb` plus GIN indexes for `event_log.payload` and `analytics_sna
 - FastAPI API service with JWT role-based auth.
 - Security audit middleware and admin-only audit endpoint for failed login, unauthorized, and forbidden attempts.
 - PostgreSQL operational database.
-- Local KYC document storage adapter writing to `storage/kyc` for development; production should swap this for S3, Azure Blob Storage, Google Cloud Storage, or MinIO.
+- MinIO object storage for KYC image/PDF file bytes, with PostgreSQL retaining metadata, hashes, and storage keys; `storage/kyc` remains an explicit local fallback for tests/development.
 - Redpanda Kafka-compatible broker for domain events.
 - Worker process for analytics materialization, consumer offset tracking, and dead-letter capture.
 - Named Kafka monitor consumers for analytics, fraud, liquidity, and reconciliation visibility in Redpanda Console.
@@ -84,7 +84,7 @@ Use Postgres `jsonb` plus GIN indexes for `event_log.payload` and `analytics_sna
 2. Frontend calls protected `/api/v1` routes.
 3. FastAPI validates JWT and role access; failed login, unauthorized, and forbidden attempts are written to `security_audit_log`.
 4. Authorized requests update PostgreSQL and publish domain events.
-5. KYC document uploads write file bytes to local dev storage and metadata/hash rows to `kyc_documents`; production should use object storage and signed URLs.
+5. KYC document uploads write file bytes to MinIO and metadata/hash rows to `kyc_documents`; hosted production should use private object storage and signed URLs.
 6. Each event is also stored in `event_log` for business auditability.
 7. Redpanda carries the stream for worker consumers.
 8. Worker materializes analytics snapshots, records consumer offsets, and dead-letters malformed or failed stream messages.
@@ -112,6 +112,7 @@ flowchart TB
     migration[Alembic Migrations<br/>DATABASE_MIGRATION_URL<br/>owner role only]
     db_security[DB Security Boundary<br/>SCRAM + pg_hba.conf<br/>TLS config + loopback bind]
     postgres[(PostgreSQL<br/>Operational DB<br/>Forced RLS)]
+    minio[(MinIO<br/>KYC object storage<br/>private bucket)]
     app_role[agent_app role<br/>runtime read/write]
     owner_role[agent_owner role<br/>schema owner]
     readonly_role[agent_readonly role<br/>SELECT only]
@@ -243,6 +244,7 @@ flowchart TB
     customers_api --> app_role
     kyc_api --> app_role
     kyc_docs_api --> app_role
+    kyc_docs_api -->|file bytes| minio
     float_api --> app_role
     tx_api --> app_role
     reports_api --> app_role

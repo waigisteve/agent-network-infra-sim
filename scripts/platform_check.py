@@ -16,10 +16,13 @@ from typing import Any
 DEFAULT_API_BASE_URL = "http://127.0.0.1:8000"
 DEFAULT_FRONTEND_URL = "http://127.0.0.1:5173"
 DEFAULT_REDPANDA_CONSOLE_URL = "http://127.0.0.1:18081"
+DEFAULT_MINIO_CONSOLE_URL = "http://127.0.0.1:9001"
 DEFAULT_AIRFLOW_URL = "http://127.0.0.1:18080"
 DEFAULT_SUPERSET_URL = "http://127.0.0.1:18088"
 DEFAULT_KAFKA_HOST = "127.0.0.1"
 DEFAULT_KAFKA_PORT = 19092
+DEFAULT_MINIO_HOST = "127.0.0.1"
+DEFAULT_MINIO_PORT = 9000
 DEFAULT_TIMEOUT_SECONDS = 5
 
 
@@ -160,7 +163,7 @@ def check_optional_http(name: str, url: str, timeout_seconds: int) -> CheckResul
 
 
 def check_docker_services() -> CheckResult:
-    expected = {"postgres", "redpanda", "api", "worker", "frontend"}
+    expected = {"postgres", "redpanda", "minio", "api", "worker", "frontend"}
     try:
         process = subprocess.run(
             ["docker", "compose", "ps", "--services", "--status", "running"],
@@ -203,7 +206,9 @@ def collect_checks(args: argparse.Namespace) -> list[CheckResult]:
         check_stream_readiness(args.api_base_url, args.timeout_seconds),
         check_frontend(args.frontend_url, args.timeout_seconds),
         check_tcp_port("kafka.external", args.kafka_host, args.kafka_port, args.timeout_seconds),
+        check_tcp_port("minio.s3", args.minio_host, args.minio_port, args.timeout_seconds),
         check_optional_http("redpanda.console", args.redpanda_console_url, args.timeout_seconds),
+        check_optional_http("minio.console", args.minio_console_url, args.timeout_seconds),
         check_optional_http("airflow", args.airflow_url, args.timeout_seconds),
         check_optional_http("superset", args.superset_url, args.timeout_seconds),
         check_dbt_project(repo_root),
@@ -222,10 +227,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--api-base-url", default=DEFAULT_API_BASE_URL)
     parser.add_argument("--frontend-url", default=DEFAULT_FRONTEND_URL)
     parser.add_argument("--redpanda-console-url", default=DEFAULT_REDPANDA_CONSOLE_URL)
+    parser.add_argument("--minio-console-url", default=DEFAULT_MINIO_CONSOLE_URL)
     parser.add_argument("--airflow-url", default=DEFAULT_AIRFLOW_URL)
     parser.add_argument("--superset-url", default=DEFAULT_SUPERSET_URL)
     parser.add_argument("--kafka-host", default=DEFAULT_KAFKA_HOST)
     parser.add_argument("--kafka-port", type=int, default=DEFAULT_KAFKA_PORT)
+    parser.add_argument("--minio-host", default=DEFAULT_MINIO_HOST)
+    parser.add_argument("--minio-port", type=int, default=DEFAULT_MINIO_PORT)
     parser.add_argument("--timeout-seconds", type=int, default=DEFAULT_TIMEOUT_SECONDS)
     return parser.parse_args()
 

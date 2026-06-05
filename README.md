@@ -7,6 +7,7 @@ It includes:
 - FastAPI backend
 - PostgreSQL persistence
 - Redpanda Kafka-compatible event streaming
+- MinIO object storage for KYC image/PDF files
 - Worker process for analytics snapshots
 - Named Kafka monitor consumers for analytics, fraud, liquidity, and reconciliation demo groups
 - Partner data contracts for telco transaction feeds and bank settlement files
@@ -32,6 +33,7 @@ Open:
 - Frontend: `http://127.0.0.1:5173`
 - API docs: `http://127.0.0.1:8000/docs`
 - Redpanda Console: `http://127.0.0.1:18081`
+- MinIO Console: `http://127.0.0.1:9001`
 - Airflow: `http://127.0.0.1:18080`
 - Superset: `http://127.0.0.1:18088`
 
@@ -47,6 +49,7 @@ Browser and API endpoints use plain local HTTP, not HTTPS:
 - Health check: `http://127.0.0.1:8000/health`
 - Readiness check: `http://127.0.0.1:8000/ready`
 - Redpanda Console: `http://127.0.0.1:18081`
+- MinIO Console: `http://127.0.0.1:9001`
 - Airflow: `http://127.0.0.1:18080`
 - Superset: `http://127.0.0.1:18088`
 
@@ -54,6 +57,7 @@ Non-HTTP service endpoints do not use `http://`:
 
 - Kafka external bootstrap: `127.0.0.1:19092`
 - PostgreSQL host endpoint: `127.0.0.1:${POSTGRES_HOST_PORT:-55432}`
+- MinIO S3-compatible endpoint: `127.0.0.1:9000`
 
 Use the application role for runtime database testing:
 
