@@ -45,6 +45,8 @@ Masking applies to customer lists, KYC review responses, transaction lists, agen
 - `GET /reports/agent/{agent_id}`
 - `GET /maps/field-team`
 - `GET /events`
+- `GET /stream/readiness`
+- `GET /stream/dead-letter-events`
 - `GET /security/audit-log`
 - `GET /partners`
 - `POST /integrations/telco-transactions`
@@ -77,6 +79,8 @@ Public endpoints are limited to liveness/readiness and login. Every operational 
 | `GET /api/v1/reports/agent/{agent_id}` | Yes | Yes | Own agent only | Yes | Agent role cannot view another agent's report. |
 | `GET /api/v1/maps/field-team` | Yes | Yes | No | No | Location-oriented field operations scope. |
 | `GET /api/v1/events` | Yes | No | No | No | Admin audit/event stream only; payloads are masked. |
+| `GET /api/v1/stream/readiness` | Yes | No | No | No | Admin-only worker health view with consumer offsets, processed counts, failure counts, and open dead-letter totals. |
+| `GET /api/v1/stream/dead-letter-events` | Yes | No | No | No | Admin-only stream failure queue; response omits raw customer PII and authorization secrets. |
 | `GET /api/v1/security/audit-log` | Yes | No | No | No | Admin security audit stream for failed login and blocked access attempts. |
 | `GET /api/v1/partners` | Yes | Yes | No | No | Partner metadata visibility for operations. |
 | `POST /api/v1/integrations/telco-transactions` | Yes | No | No | No | Admin-controlled partner feed ingestion. |

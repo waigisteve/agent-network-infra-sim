@@ -52,6 +52,8 @@ def test_protected_get_endpoints_reject_anonymous_requests() -> None:
         "/api/v1/reports/agent/agent_neema",
         "/api/v1/maps/field-team",
         "/api/v1/events",
+        "/api/v1/stream/readiness",
+        "/api/v1/stream/dead-letter-events",
         "/api/v1/partners",
     ]
 
@@ -66,6 +68,8 @@ def test_admin_only_endpoints_reject_non_admin_roles() -> None:
 
     checks = [
         ("GET", "/api/v1/events", field_token, None),
+        ("GET", "/api/v1/stream/readiness", field_token, None),
+        ("GET", "/api/v1/stream/dead-letter-events", agent_token, None),
         ("POST", "/api/v1/float/requests/fr_001/approve", field_token, {"reviewer": "field"}),
         ("POST", "/api/v1/float/requests/fr_001/reject", agent_token, {"reviewer": "agent"}),
         (

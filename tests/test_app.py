@@ -12,6 +12,7 @@ import httpx
 from backend.app.db import SessionLocal, create_all
 from backend.app.main import app
 from backend.app.scripts.seed import seed
+from backend.app.worker import process_stream_message, record_stream_failure
 
 
 def setup_function() -> None:
@@ -306,3 +307,53 @@ def test_bank_settlement_reconciles_against_settled_telco_partner() -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "matched", "exception": None}
+
+
+def test_stream_processing_records_consumer_offset() -> None:
+    with SessionLocal() as db:
+        process_stream_message(
+            db,
+            consumer_group="agent-network-worker",
+            topic="transaction-events",
+            partition=0,
+            offset=42,
+            raw_payload='{"id": "event-42", "name": "transaction.created", "payload": {"amount": 5000}}',
+        )
+        db.commit()
+
+    response = request("GET", "/api/v1/stream/readiness", token=login())
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["status"] == "ok"
+    assert payload["summary"]["tracked_partitions"] == 1
+    assert payload["summary"]["processed_total"] == 1
+    assert payload["consumer_groups"][0]["last_event_id"] == "event-42"
+
+
+def test_stream_failure_records_dead_letter_event_and_degraded_readiness() -> None:
+    with SessionLocal() as db:
+        record_stream_failure(
+            db,
+            consumer_group="agent-network-worker",
+            topic="transaction-events",
+            partition=0,
+            offset=43,
+            raw_payload="{not-json",
+            failure_reason="invalid json",
+        )
+        db.commit()
+
+    readiness = request("GET", "/api/v1/stream/readiness", token=login()).json()
+    dead_letters = request("GET", "/api/v1/stream/dead-letter-events", token=login()).json()
+
+    assert readiness["status"] == "degraded"
+    assert readiness["summary"]["open_dead_letters"] == 1
+    assert dead_letters[0]["failure_reason"] == "invalid json"
+    assert dead_letters[0]["topic"] == "transaction-events"
+
+
+def test_stream_readiness_is_admin_only() -> None:
+    response = request("GET", "/api/v1/stream/readiness", token=login("agent@example.com"))
+
+    assert response.status_code == 403

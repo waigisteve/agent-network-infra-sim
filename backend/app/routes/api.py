@@ -5,7 +5,7 @@ from typing import Annotated
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from backend.app.auth import create_access_token, get_current_user, require_roles, verify_password
@@ -16,6 +16,7 @@ from backend.app.masking import mask_customer_record, mask_payload
 from backend.app.models import (
     AgentORM,
     CustomerORM,
+    DeadLetterEventORM,
     EventLogORM,
     FieldAgentORM,
     FloatRequestCreate,
@@ -28,10 +29,12 @@ from backend.app.models import (
     Role,
     SettlementReconciliationRequest,
     SecurityAuditLogORM,
+    StreamConsumerOffsetORM,
     TokenResponse,
     TransactionCreate,
     TransactionORM,
     UserORM,
+    WorkerErrorORM,
 )
 from backend.app.security_audit import write_security_audit
 from backend.app.services.float_ops import approve_float_request, reconciliation, reject_float_request
@@ -338,6 +341,67 @@ async def events(
             "created_at": event.created_at,
         }
         for event in db.scalars(select(EventLogORM).order_by(EventLogORM.created_at.desc())).all()
+    ]
+
+
+@router.get("/stream/readiness")
+async def stream_readiness(
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserORM, Depends(require_roles(Role.admin))],
+) -> dict[str, object]:
+    offsets = db.scalars(select(StreamConsumerOffsetORM).order_by(StreamConsumerOffsetORM.updated_at.desc())).all()
+    open_dead_letters = db.scalar(select(func.count(DeadLetterEventORM.id)).where(DeadLetterEventORM.status == "open")) or 0
+    worker_errors = db.scalar(select(func.count(WorkerErrorORM.id))) or 0
+    processed_total = sum(offset.processed_count for offset in offsets)
+    failed_total = sum(offset.failed_count for offset in offsets)
+    status_value = "degraded" if open_dead_letters or failed_total or worker_errors else "ok"
+    return {
+        "status": status_value,
+        "consumer_groups": [
+            {
+                "consumer_group": offset.consumer_group,
+                "topic": offset.topic,
+                "partition": offset.partition,
+                "last_offset": offset.last_offset,
+                "last_event_id": offset.last_event_id,
+                "processed_count": offset.processed_count,
+                "failed_count": offset.failed_count,
+                "last_processed_at": offset.last_processed_at,
+                "updated_at": offset.updated_at,
+            }
+            for offset in offsets
+        ],
+        "summary": {
+            "tracked_partitions": len(offsets),
+            "processed_total": processed_total,
+            "failed_total": failed_total,
+            "open_dead_letters": open_dead_letters,
+            "worker_errors": worker_errors,
+        },
+    }
+
+
+@router.get("/stream/dead-letter-events")
+async def stream_dead_letter_events(
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserORM, Depends(require_roles(Role.admin))],
+) -> list[dict[str, object]]:
+    return [
+        {
+            "id": event.id,
+            "consumer_group": event.consumer_group,
+            "topic": event.topic,
+            "partition": event.partition,
+            "offset": event.offset,
+            "event_id": event.event_id,
+            "event_name": event.event_name,
+            "failure_reason": event.failure_reason,
+            "status": event.status,
+            "attempt_count": event.attempt_count,
+            "created_at": event.created_at,
+            "resolved_at": event.resolved_at,
+        }
+        for event in db.scalars(select(DeadLetterEventORM).order_by(DeadLetterEventORM.created_at.desc())).all()
     ]
 
 

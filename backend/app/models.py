@@ -353,6 +353,49 @@ class WorkerErrorORM(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class StreamConsumerOffsetORM(Base):
+    __tablename__ = "stream_consumer_offsets"
+    __table_args__ = (
+        Index("ix_stream_offsets_group_topic", "consumer_group", "topic"),
+        Index("ix_stream_offsets_updated", "updated_at"),
+        UniqueConstraint("consumer_group", "topic", "partition", name="uq_stream_consumer_offsets_position"),
+    )
+
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    consumer_group: Mapped[str] = mapped_column(String(128), index=True)
+    topic: Mapped[str] = mapped_column(String(128), index=True)
+    partition: Mapped[int] = mapped_column(Integer)
+    last_offset: Mapped[int] = mapped_column(Integer)
+    last_event_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    processed_count: Mapped[int] = mapped_column(Integer, default=0)
+    failed_count: Mapped[int] = mapped_column(Integer, default=0)
+    last_processed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class DeadLetterEventORM(Base):
+    __tablename__ = "dead_letter_events"
+    __table_args__ = (
+        Index("ix_dead_letter_status_created", "status", "created_at"),
+        Index("ix_dead_letter_topic_created", "topic", "created_at"),
+        Index("ix_dead_letter_event_id", "event_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    consumer_group: Mapped[str] = mapped_column(String(128), index=True)
+    topic: Mapped[str] = mapped_column(String(128), index=True)
+    partition: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    offset: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    event_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    event_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    failure_reason: Mapped[str] = mapped_column(Text)
+    payload: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="open", index=True)
+    attempt_count: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class OrmModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

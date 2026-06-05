@@ -106,6 +106,30 @@ def check_auth_flow(api_base_url: str, timeout_seconds: int) -> CheckResult:
     return CheckResult("api.auth", "fail", f"protected route failed: HTTP {me_status} {me_payload}")
 
 
+def check_stream_readiness(api_base_url: str, timeout_seconds: int) -> CheckResult:
+    try:
+        _, login_payload = post_json(
+            f"{api_base_url}/api/v1/auth/login",
+            {"email": "admin@example.com", "password": "password"},
+            timeout_seconds,
+        )
+        token = login_payload.get("access_token")
+        if not isinstance(token, str) or not token:
+            return CheckResult("stream.readiness", "fail", "admin login did not return a token")
+        status, payload = get_json(f"{api_base_url}/api/v1/stream/readiness", timeout_seconds, token)
+    except Exception as exc:
+        return CheckResult("stream.readiness", "fail", str(exc))
+    readiness = payload.get("status")
+    if status == 200 and readiness in {"ok", "degraded"}:
+        summary = payload.get("summary", {})
+        return CheckResult(
+            "stream.readiness",
+            "ok",
+            f"{readiness}; partitions={summary.get('tracked_partitions', 0)} dead_letters={summary.get('open_dead_letters', 0)}",
+        )
+    return CheckResult("stream.readiness", "fail", f"unexpected response: HTTP {status} {payload}")
+
+
 def check_frontend(frontend_url: str, timeout_seconds: int) -> CheckResult:
     try:
         status, body = http_text(frontend_url, timeout_seconds)
@@ -176,6 +200,7 @@ def collect_checks(args: argparse.Namespace) -> list[CheckResult]:
         check_api_health(args.api_base_url, args.timeout_seconds),
         check_api_readiness(args.api_base_url, args.timeout_seconds),
         check_auth_flow(args.api_base_url, args.timeout_seconds),
+        check_stream_readiness(args.api_base_url, args.timeout_seconds),
         check_frontend(args.frontend_url, args.timeout_seconds),
         check_tcp_port("kafka.external", args.kafka_host, args.kafka_port, args.timeout_seconds),
         check_optional_http("redpanda.console", args.redpanda_console_url, args.timeout_seconds),

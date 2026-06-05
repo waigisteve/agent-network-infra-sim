@@ -49,6 +49,8 @@ TableGroup "PostgreSQL security controls" {
   security_audit_log
   analytics_snapshots
   worker_errors
+  stream_consumer_offsets
+  dead_letter_events
   partners
   partner_contracts
   integration_runs
@@ -274,6 +276,53 @@ Table worker_errors [note: 'Forced RLS. Policies: worker_errors_app_rw for agent
     source
     created_at
     (source, created_at)
+  }
+}
+
+Table stream_consumer_offsets [note: 'Forced RLS. Worker readiness state by consumer group, topic, and partition. Tracks processed and failed counts for stream operations.'] {
+  id varchar(128) [pk]
+  consumer_group varchar(128) [not null]
+  topic varchar(128) [not null]
+  partition integer [not null]
+  last_offset integer [not null]
+  last_event_id varchar(64)
+  processed_count integer [not null]
+  failed_count integer [not null]
+  last_processed_at timestamp [not null]
+  updated_at timestamp [not null]
+
+  indexes {
+    consumer_group
+    topic
+    (consumer_group, topic)
+    updated_at
+    (consumer_group, topic, partition) [unique]
+  }
+}
+
+Table dead_letter_events [note: 'Forced RLS. Stream messages that failed worker processing and require triage, replay, or resolution.'] {
+  id varchar(64) [pk]
+  consumer_group varchar(128) [not null]
+  topic varchar(128) [not null]
+  partition integer
+  offset integer
+  event_id varchar(64)
+  event_name varchar(128)
+  failure_reason text [not null]
+  payload json
+  status varchar(32) [not null]
+  attempt_count integer [not null]
+  created_at timestamp [not null]
+  resolved_at timestamp
+
+  indexes {
+    consumer_group
+    topic
+    event_id
+    status
+    created_at
+    (status, created_at)
+    (topic, created_at)
   }
 }
 

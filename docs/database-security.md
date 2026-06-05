@@ -41,7 +41,7 @@ Existing volumes that were created before `POSTGRES_AUDIT_USER` was introduced m
 | Control | Implementation | Effect |
 | --- | --- | --- |
 | RBAC and least privilege | Separate owner, app, and read-only roles in `docker/postgres/init/001-security-roles.sh` | Runtime credentials cannot perform schema ownership operations. Read-only credentials cannot mutate data. |
-| Row-Level Security | `backend/alembic/versions/0002_postgres_security.py` secures the original application tables; `backend/alembic/versions/0003_partner_integrations.py` applies the same controls to partner integration tables | Every application and integration table is RLS-protected. Current policies allow full app-role access and read-only select access; future tenant/agent/partner-specific predicates can replace broad policies without changing table ownership. |
+| Row-Level Security | `backend/alembic/versions/0002_postgres_security.py` secures the original application tables; `backend/alembic/versions/0003_partner_integrations.py` applies the same controls to partner integration tables; `backend/alembic/versions/0007_stream_reliability.py` applies them to stream reliability tables | Every application, integration, and stream reliability table is RLS-protected. Current policies allow full app-role access and read-only select access; future tenant/agent/partner-specific predicates can replace broad policies without changing table ownership. |
 | pgAudit | Documented as a managed-platform/custom-image requirement | Requires `shared_preload_libraries = 'pgaudit'` and provider support. The stock `postgres:16` image does not include pgAudit by default. |
 | SCRAM-SHA-256 authentication | `password_encryption=scram-sha-256` and `pg_hba.conf` network rules | New role passwords are SCRAM-hashed and network clients must authenticate with password auth. |
 | Network restriction | Postgres binds to `127.0.0.1:${POSTGRES_HOST_PORT:-55432}` and uses `docker/postgres/pg_hba.conf` | Database is not exposed on public interfaces in local Docker. Hosted databases should also use firewall rules/private networking. |
@@ -61,6 +61,7 @@ Fresh schema state:
 - `0002_postgres_security` enables forced RLS, creates two policies per table, grants app-role read/write access, grants read-only select access, and revokes public schema creation.
 - `0003_partner_integrations` creates partner, contract, ingestion-run, raw-feed, settlement, and reconciliation-exception tables. It also enables forced RLS and grants app/read-only access for those new tables in the same migration.
 - `0005_security_audit_log` creates the security audit table, indexes event/outcome/user timelines, enables forced RLS, grants runtime read/write access, and grants read-only select access.
+- `0007_stream_reliability` creates worker consumer offset and dead-letter tables, indexes stream readiness access paths, enables forced RLS, grants runtime read/write access, and grants read-only select access.
 
 Existing local schema state:
 

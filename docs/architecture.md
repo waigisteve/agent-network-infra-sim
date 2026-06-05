@@ -25,6 +25,8 @@ The operational tables, audit tables, worker tables, and reporting tables are in
 - `event_log.agent_id`, `event_log.customer_id`, `event_log.float_request_id`, and `event_log.transaction_id` provide direct relational links for common event queries.
 - `security_audit_log.user_id` links blocked access attempts back to the user account when the caller is known.
 - `worker_errors.event_id` links failed consumer processing back to the event that failed.
+- `stream_consumer_offsets` tracks the worker group, topic, partition, last processed offset, last event ID, and failure counts for stream readiness.
+- `dead_letter_events` stores failed stream messages with topic/partition/offset and failure reason so operations can triage and replay safely.
 - `analytics_snapshots.scope`, `agent_id`, and `field_agent_id` support network-wide, agent-level, and field-agent-level reporting.
 - `partners`, `partner_contracts`, and `integration_runs` document external telco/bank feeds, expected schema, data freshness SLA, source reference, load status, and rejection counts.
 - `raw_partner_transactions` stores normalized telco transaction records with hashed customer identifiers and immutable raw payloads for replay/reconciliation.
@@ -46,6 +48,7 @@ The schema includes indexes for the expected high-volume filters:
 - Security audit: `security_audit_log.event_type + created_at`, `security_audit_log.outcome + created_at`, and `security_audit_log.user_id + created_at`.
 - Analytics: `analytics_snapshots.scope + snapshot_date`, `analytics_snapshots.agent_id + snapshot_date`, `analytics_snapshots.field_agent_id + snapshot_date`.
 - Worker failures: `worker_errors.source + created_at`.
+- Stream reliability: `stream_consumer_offsets.consumer_group + topic`, `stream_consumer_offsets.updated_at`, `dead_letter_events.status + created_at`, and `dead_letter_events.topic + created_at`.
 - Partner metadata: `partners.partner_type + country`, active contract lookup, and integration mode.
 - Integration observability: `integration_runs.partner_id + started_at`, `integration_runs.status + started_at`, and unique partner/feed/source references.
 - Telco raw feeds: unique partner/provider references plus partner/date and agent/date access paths.
@@ -61,7 +64,7 @@ Use Postgres `jsonb` plus GIN indexes for `event_log.payload` and `analytics_sna
 - Security audit middleware and admin-only audit endpoint for failed login, unauthorized, and forbidden attempts.
 - PostgreSQL operational database.
 - Redpanda Kafka-compatible broker for domain events.
-- Worker process for analytics materialization and future stream consumers.
+- Worker process for analytics materialization, consumer offset tracking, and dead-letter capture.
 - Named Kafka monitor consumers for analytics, fraud, liquidity, and reconciliation visibility in Redpanda Console.
 - Alembic migrations for schema changes.
 - Partner feed contracts and ingestion audit tables for telco/bank integration simulation.
@@ -80,7 +83,7 @@ Use Postgres `jsonb` plus GIN indexes for `event_log.payload` and `analytics_sna
 4. Authorized requests update PostgreSQL and publish domain events.
 5. Each event is also stored in `event_log` for business auditability.
 6. Redpanda carries the stream for worker consumers.
-7. Worker materializes analytics snapshots for dashboard/reporting workflows.
+7. Worker materializes analytics snapshots, records consumer offsets, and dead-letters malformed or failed stream messages.
 8. Partner feeds are validated against versioned contracts, loaded into raw integration tables, and reconciled against settlement totals.
 9. Airflow orchestrates partner ingestion, reconciliation, and dbt builds when the `orchestration` profile is enabled.
 10. dbt transforms operational/integration tables into governed analytics marts.
@@ -160,6 +163,8 @@ flowchart TB
         security_audit_tbl[(security_audit_log<br/>RLS forced)]
         analytics_tbl[(analytics_snapshots<br/>RLS forced)]
         worker_errors_tbl[(worker_errors<br/>RLS forced)]
+        stream_offsets_tbl[(stream_consumer_offsets<br/>RLS forced)]
+        dead_letters_tbl[(dead_letter_events<br/>RLS forced)]
         partners_tbl[(partners<br/>RLS forced)]
         contracts_tbl[(partner_contracts<br/>RLS forced)]
         runs_tbl[(integration_runs<br/>RLS forced)]
@@ -304,6 +309,8 @@ flowchart TB
     redpanda --> reconciliation_monitor
     worker --> analytics_tbl
     worker --> worker_errors_tbl
+    worker --> stream_offsets_tbl
+    worker --> dead_letters_tbl
     console --> redpanda
 ```
 

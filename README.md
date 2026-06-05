@@ -235,6 +235,7 @@ Managed-platform controls:
 - [API](docs/api.md)
 - [SQL Logic And Lineage](docs/sql-logic.md)
 - [Database Security](docs/database-security.md)
+- [Streaming Reliability](docs/streaming-reliability.md)
 - [SPOF Analysis](docs/spof-analysis.md)
 - [Opareta Role Alignment](docs/opareta-role-alignment.md)
 - [Data Platform Roadmap](docs/data-platform-roadmap.md)
