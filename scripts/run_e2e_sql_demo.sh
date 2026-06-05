@@ -72,6 +72,7 @@ printf '\n== 7. Latest bank settlements and reconciliation exceptions ==\n'
 select
     settlement_reference,
     partner_id,
+    settled_partner_id,
     transaction_count,
     gross_amount,
     commission_amount,

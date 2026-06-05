@@ -39,7 +39,7 @@ The operational schema receives real simulated entries from the API and ingestio
 | `event_log` | `EventPublisher.publish()` | Durable audit copy of every domain event before or alongside Kafka publishing. |
 | `integration_runs` | Partner ingestion service | One row per partner feed/file/API batch received. |
 | `raw_partner_transactions` | Telco feed ingestion | Canonical partner transaction records with hashed customer identifiers. |
-| `bank_settlements` | Bank settlement ingestion | Partner settlement totals used for reconciliation. |
+| `bank_settlements` | Bank settlement ingestion | Bank-owned settlement totals with `settled_partner_id` pointing to the partner whose transactions are being settled. |
 | `reconciliation_exceptions` | Reconciliation service | Exception queue when settlement totals do not match raw transactions. |
 
 ## dbt SQL Layers
@@ -135,6 +135,7 @@ with transaction_totals as (
 select
     settlements.settlement_id,
     settlements.partner_id,
+    settlements.settled_partner_id,
     case
         when settlements.transaction_count = coalesce(transaction_totals.raw_transaction_count, 0)
          and settlements.gross_amount = coalesce(transaction_totals.raw_gross_amount, 0)
@@ -143,12 +144,12 @@ select
     end as reconciliation_status
 from {{ ref('stg_bank_settlements') }} as settlements
 left join transaction_totals
-    on settlements.partner_id = transaction_totals.partner_id
+    on settlements.settled_partner_id = transaction_totals.partner_id
 ```
 
 Purpose:
 
-- compares bank settlement totals against successful telco transactions
+- compares bank settlement totals against successful transactions for the explicit settled partner
 - classifies each settlement as `matched` or `exception`
 - gives operations a defensible reconciliation signal
 

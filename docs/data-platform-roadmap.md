@@ -53,7 +53,7 @@ The detailed SQL lineage is documented in [`sql-logic.md`](sql-logic.md), includ
 | Staging | `stg_telco_transactions` | Rename, cast, and normalize raw partner transaction fields. |
 | Staging | `stg_bank_settlements` | Normalize settlement files and enforce date/currency types. |
 | Intermediate | `int_transactions_deduped` | Deduplicate by partner and provider reference. |
-| Intermediate | `int_settlement_reconciliation` | Compare successful transaction totals to settlement totals. |
+| Intermediate | `int_settlement_reconciliation` | Compare successful transaction totals to settlement totals through `settled_partner_id`. |
 | Mart | `fact_transactions` | Trusted transaction fact for BI and downstream products. |
 | Mart | `dim_agents` | Governed agent dimension with field-agent and country attributes. |
 | Mart | `dim_partners` | Partner dimension for tenant-aware reporting. |

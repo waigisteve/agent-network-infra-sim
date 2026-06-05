@@ -252,3 +252,57 @@ def test_bank_settlement_reconciliation_creates_exception_for_mismatch() -> None
     assert response.status_code == 200
     assert payload["status"] == "exception"
     assert payload["exception"]["type"] == "settlement_mismatch"
+
+
+def test_bank_settlement_reconciles_against_settled_telco_partner() -> None:
+    token = login()
+    request(
+        "POST",
+        "/api/v1/integrations/telco-transactions",
+        token=token,
+        json={
+            "contract_name": "telco_transactions_v1",
+            "source_reference": "kafka-offset-201",
+            "records": [
+                {
+                    "provider_reference": "telco-ref-201",
+                    "agent_id": "agent_neema",
+                    "customer_msisdn": "256770000201",
+                    "transaction_type": "DEPOSIT",
+                    "amount": 4500,
+                    "commission": 54,
+                    "status": "SUCCESS",
+                    "created_at": "2026-05-28T08:05:00+00:00",
+                }
+            ],
+        },
+    )
+    settlement = request(
+        "POST",
+        "/api/v1/integrations/bank-settlements",
+        token=token,
+        json={
+            "contract_name": "bank_settlements_v1",
+            "source_reference": "sftp-bank-b-2026-05-29.csv",
+            "records": [
+                {
+                    "settlement_reference": "bank-settle-201",
+                    "settled_partner_code": "TELCO_A_UG",
+                    "settlement_date": "2026-05-29",
+                    "transaction_count": 1,
+                    "gross_amount": 4500,
+                    "commission_amount": 54,
+                    "currency": "UGX",
+                }
+            ],
+        },
+    )
+    response = request(
+        "POST",
+        "/api/v1/integrations/reconcile-settlement",
+        token=token,
+        json={"partner_id": settlement.json()["partner_id"], "settlement_reference": "bank-settle-201"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "matched", "exception": None}

@@ -28,6 +28,7 @@ The operational tables, audit tables, worker tables, and reporting tables are in
 - `analytics_snapshots.scope`, `agent_id`, and `field_agent_id` support network-wide, agent-level, and field-agent-level reporting.
 - `partners`, `partner_contracts`, and `integration_runs` document external telco/bank feeds, expected schema, data freshness SLA, source reference, load status, and rejection counts.
 - `raw_partner_transactions` stores normalized telco transaction records with hashed customer identifiers and immutable raw payloads for replay/reconciliation.
+- `bank_settlements.settled_partner_id` separates the bank/source partner from the telco/settled partner so bank-owned settlement files reconcile against the correct transaction feed.
 - `bank_settlements` and `reconciliation_exceptions` model bank/telco settlement matching and the exception queue that data/ops teams must clear.
 
 Customer-facing and reporting outputs mask customer PII at the API boundary. The database keeps the source values for regulated operations, while API responses from customer, transaction, report, and event-audit endpoints mask customer names, phone numbers, national IDs, birthdays, and addresses.

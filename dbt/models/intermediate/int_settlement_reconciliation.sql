@@ -12,6 +12,7 @@ with transaction_totals as (
 select
     settlements.settlement_id,
     settlements.partner_id,
+    settlements.settled_partner_id,
     settlements.settlement_reference,
     settlements.settlement_date,
     settlements.transaction_count as settlement_transaction_count,
@@ -28,4 +29,4 @@ select
     end as reconciliation_status
 from {{ ref('stg_bank_settlements') }} as settlements
 left join transaction_totals
-    on settlements.partner_id = transaction_totals.partner_id
+    on settlements.settled_partner_id = transaction_totals.partner_id

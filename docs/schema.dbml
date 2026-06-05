@@ -377,6 +377,7 @@ Table raw_partner_transactions [note: 'Forced RLS. Canonical raw telco transacti
 Table bank_settlements [note: 'Forced RLS. Bank settlement totals used to reconcile transaction count, gross value, commission, and currency.'] {
   id varchar(64) [pk]
   partner_id varchar(64) [not null]
+  settled_partner_id varchar(64) [not null]
   integration_run_id varchar(64) [not null]
   settlement_reference varchar(128) [not null]
   settlement_date date [not null]
@@ -389,10 +390,12 @@ Table bank_settlements [note: 'Forced RLS. Bank settlement totals used to reconc
 
   indexes {
     partner_id
+    settled_partner_id
     integration_run_id
     settlement_reference
     (partner_id, settlement_reference) [unique]
     (partner_id, settlement_date)
+    (settled_partner_id, settlement_date)
   }
 }
 
@@ -501,6 +504,7 @@ Ref: raw_partner_transactions.partner_id > partners.id
 Ref: raw_partner_transactions.integration_run_id > integration_runs.id
 Ref: raw_partner_transactions.agent_id > agents.id
 Ref: bank_settlements.partner_id > partners.id
+Ref: bank_settlements.settled_partner_id > partners.id
 Ref: bank_settlements.integration_run_id > integration_runs.id
 Ref: reconciliation_exceptions.partner_id > partners.id
 Ref: reconciliation_exceptions.integration_run_id > integration_runs.id

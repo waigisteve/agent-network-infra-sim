@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime
 
+from sqlalchemy import func, select
+
 from backend.app.db import SessionLocal
+from backend.app.models import PartnerORM, RawPartnerTransactionORM
 from backend.app.services.partner_ingestion import ingest_bank_settlements, ingest_telco_transactions, reconcile_partner_settlement
 
 
@@ -27,6 +30,22 @@ def main() -> None:
                 }
             ],
         )
+        telco_partner = db.scalar(select(PartnerORM).where(PartnerORM.code == "TELCO_A_UG"))
+        if telco_partner is None:
+            raise RuntimeError("TELCO_A_UG partner was not created")
+        totals = db.execute(
+            select(
+                func.count(RawPartnerTransactionORM.id),
+                func.coalesce(func.sum(RawPartnerTransactionORM.amount), 0),
+                func.coalesce(func.sum(RawPartnerTransactionORM.commission), 0),
+            ).where(
+                RawPartnerTransactionORM.partner_id == telco_partner.id,
+                RawPartnerTransactionORM.status == "SUCCESS",
+            )
+        ).one()
+        transaction_count = int(totals[0])
+        gross_amount = int(totals[1])
+        commission_amount = int(totals[2])
         bank_run = ingest_bank_settlements(
             db,
             "bank_settlements_v1",
@@ -34,10 +53,11 @@ def main() -> None:
             [
                 {
                     "settlement_reference": settlement_reference,
+                    "settled_partner_code": "TELCO_A_UG",
                     "settlement_date": date.today().isoformat(),
-                    "transaction_count": 1,
-                    "gross_amount": 4500,
-                    "commission_amount": 54,
+                    "transaction_count": transaction_count,
+                    "gross_amount": gross_amount,
+                    "commission_amount": commission_amount,
                     "currency": "UGX",
                 }
             ],

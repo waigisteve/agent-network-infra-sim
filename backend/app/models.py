@@ -167,11 +167,13 @@ class BankSettlementORM(Base):
     __tablename__ = "bank_settlements"
     __table_args__ = (
         Index("ix_bank_settlements_partner_date", "partner_id", "settlement_date"),
+        Index("ix_bank_settlements_settled_partner_date", "settled_partner_id", "settlement_date"),
         UniqueConstraint("partner_id", "settlement_reference", name="uq_bank_settlement_reference"),
     )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     partner_id: Mapped[str] = mapped_column(ForeignKey("partners.id"), index=True)
+    settled_partner_id: Mapped[str] = mapped_column(ForeignKey("partners.id"), index=True)
     integration_run_id: Mapped[str] = mapped_column(ForeignKey("integration_runs.id"), index=True)
     settlement_reference: Mapped[str] = mapped_column(String(128), index=True)
     settlement_date: Mapped[date] = mapped_column(Date, index=True)

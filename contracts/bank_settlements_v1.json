@@ -11,10 +11,12 @@
     "name": "settlements",
     "version": "v1",
     "arrival_sla": "daily by 07:00 Africa/Kampala",
+    "default_settled_partner_code": "TELCO_A_UG",
     "dedupe_key": ["partner.code", "settlement_reference"],
     "pii_fields": [],
     "fields": [
       {"name": "settlement_reference", "type": "string", "required": true},
+      {"name": "settled_partner_code", "type": "string", "required": false},
       {"name": "settlement_date", "type": "date", "required": true},
       {"name": "transaction_count", "type": "integer", "required": true},
       {"name": "gross_amount", "type": "integer", "required": true},

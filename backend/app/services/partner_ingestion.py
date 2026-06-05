@@ -154,6 +154,10 @@ def ingest_bank_settlements(db: Session, contract_name: str, source_reference: s
 
     for record in records:
         errors = validate_record(record, contract)
+        settled_partner_code = record.get("settled_partner_code") or contract["feed"].get("default_settled_partner_code")
+        settled_partner = db.scalar(select(PartnerORM).where(PartnerORM.code == settled_partner_code)) if settled_partner_code else None
+        if settled_partner is None:
+            errors.append("settled_partner_code must reference a known partner")
         if errors:
             rejected.append(f"{record.get('settlement_reference', 'unknown')}: {', '.join(errors)}")
             continue
@@ -161,6 +165,7 @@ def ingest_bank_settlements(db: Session, contract_name: str, source_reference: s
             BankSettlementORM(
                 id=f"settlement_{uuid4().hex[:12]}",
                 partner_id=partner_contract.partner_id,
+                settled_partner_id=settled_partner.id,
                 integration_run_id=run.id,
                 settlement_reference=record["settlement_reference"],
                 settlement_date=date.fromisoformat(record["settlement_date"]),
@@ -193,7 +198,7 @@ def reconcile_partner_settlement(db: Session, partner_id: str, settlement_refere
 
     totals = db.execute(
         select(func.count(RawPartnerTransactionORM.id), func.coalesce(func.sum(RawPartnerTransactionORM.amount), 0)).where(
-            RawPartnerTransactionORM.partner_id == partner_id,
+            RawPartnerTransactionORM.partner_id == settlement.settled_partner_id,
             RawPartnerTransactionORM.status == "SUCCESS",
         )
     ).one()
@@ -211,6 +216,8 @@ def reconcile_partner_settlement(db: Session, partner_id: str, settlement_refere
         description="Bank settlement does not match loaded successful partner transactions.",
         evidence={
             "settlement_reference": settlement_reference,
+            "settlement_partner_id": settlement.partner_id,
+            "settled_partner_id": settlement.settled_partner_id,
             "settlement_transaction_count": settlement.transaction_count,
             "raw_transaction_count": transaction_count,
             "settlement_gross_amount": settlement.gross_amount,
