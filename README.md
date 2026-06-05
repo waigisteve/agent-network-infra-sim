@@ -235,6 +235,38 @@ End-to-end local flow:
 
 For a fully automated local run, use `make demo-e2e`.
 
+## 30-Minute Random Workflow Simulation
+
+Run a practical randomized cycle against the live stack:
+
+```bash
+make simulate-workflow-30
+```
+
+This runs for 30 minutes by default and continuously mixes:
+
+- agent transactions
+- float requests and approvals/rejections
+- KYC document uploads to MinIO with metadata in PostgreSQL
+- KYC review decisions
+- field-agent location updates
+- telco partner feed ingestion
+- bank settlement ingestion and reconciliation
+- intentional reconciliation mismatches for exception queues
+- Kafka event publication for worker analytics
+
+To run faster or slower:
+
+```bash
+INTERVAL_SECONDS=1 make simulate-workflow-30
+```
+
+For a shorter smoke test:
+
+```bash
+docker compose exec -T api python -m backend.app.scripts.simulate_workflow_cycle --duration-seconds 60 --interval-seconds 1
+```
+
 ## Backend Test
 
 ```bash

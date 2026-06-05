@@ -103,6 +103,34 @@ http://127.0.0.1:18081
 
 The same events are persisted in Postgres in `event_log` for audit/debugging.
 
+## 30-Minute Workflow Simulation
+
+Use this when you want a more realistic live workflow than the stream-only
+simulator:
+
+```bash
+make simulate-workflow-30
+```
+
+The script runs inside the API container and randomly exercises the actual
+service layer. It creates transactions, float requests/reviews, KYC document
+uploads, KYC review decisions, location updates, partner telco feed batches,
+bank settlements, and reconciliation outcomes. KYC files are generated as safe
+sample JPEG/PNG/PDF bytes, stored in MinIO, and represented by metadata rows in
+PostgreSQL.
+
+The default runtime is 30 minutes. Adjust event frequency with:
+
+```bash
+INTERVAL_SECONDS=1 make simulate-workflow-30
+```
+
+For a short smoke test:
+
+```bash
+docker compose exec -T api python -m backend.app.scripts.simulate_workflow_cycle --duration-seconds 60 --interval-seconds 1
+```
+
 ## Database Hardening
 
 The local PostgreSQL stack uses SCRAM authentication, separate owner/application/read-only users, `pg_hba.conf` network restrictions, and PostgreSQL RLS policies after migrations are applied. Use `POSTGRES_BIND_ADDRESS=127.0.0.1` for local-only exposure.

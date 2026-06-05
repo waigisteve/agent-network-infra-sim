@@ -90,6 +90,7 @@ gantt
 | FastAPI | Operational and integration API endpoints | `backend/app/routes/api.py` |
 | Endpoint exerciser | Repeatedly calls frontend-facing API endpoints for the demo window | `backend/app/scripts/exercise_api_endpoints.py` |
 | Stream simulator | Generates mixed transaction, float, KYC, and location events | `backend/app/scripts/simulate_stream.py` |
+| Workflow simulator | Runs a randomized full cycle across transactions, float, KYC documents, partner feeds, settlements, reconciliation, MinIO, PostgreSQL, and Kafka | `backend/app/scripts/simulate_workflow_cycle.py` |
 | Partner simulator | Generates telco transaction and bank settlement feeds | `backend/app/scripts/simulate_partner_e2e.py` |
 | dbt | Builds staging, intermediate, fact, dimension, and mart models | `dbt/` |
 | Airflow | Orchestrates partner ingestion, reconciliation, and dbt build | `airflow/dags/agent_network_data_platform.py` |

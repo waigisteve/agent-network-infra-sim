@@ -1,4 +1,4 @@
-.PHONY: setup up down analytics orchestration dbt-build dbt-test migrate seed db-roles backup restore-drill test lint frontend-test demo-e2e e2e-sql-demo event-snapshot-demo platform-check
+.PHONY: setup up down analytics orchestration dbt-build dbt-test migrate seed db-roles backup restore-drill test lint frontend-test simulate-workflow-30 demo-e2e e2e-sql-demo event-snapshot-demo platform-check
 
 setup:
 	python3 -m venv .venv
@@ -43,6 +43,9 @@ simulate:
 
 simulate-partner-e2e:
 	docker compose exec -T api python -m backend.app.scripts.simulate_partner_e2e
+
+simulate-workflow-30:
+	docker compose exec -T api python -m backend.app.scripts.simulate_workflow_cycle --duration-seconds 1800 --interval-seconds $${INTERVAL_SECONDS:-2}
 
 demo-e2e:
 	scripts/run_end_to_end_demo.sh
