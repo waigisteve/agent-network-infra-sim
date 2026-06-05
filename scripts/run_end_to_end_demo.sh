@@ -39,24 +39,24 @@ PY
 
 bootstrap_superset() {
   log "Bootstrapping Superset metadata, database connection, and dashboards"
-  docker compose --profile analytics exec -T superset superset db upgrade
-  docker compose --profile analytics exec -T superset superset fab create-admin \
+  docker compose exec -T superset superset db upgrade
+  docker compose exec -T superset superset fab create-admin \
     --username admin \
     --firstname Admin \
     --lastname User \
     --email admin@example.com \
     --password password >/dev/null 2>&1 || true
-  docker compose --profile analytics exec -T superset superset init
-  docker compose --profile analytics exec -T superset superset set-database-uri \
+  docker compose exec -T superset superset init
+  docker compose exec -T superset superset set-database-uri \
     -d agent_network \
     -u postgresql+psycopg2://agent_readonly:local-agent-password@postgres:5432/agent_network
-  docker compose --profile analytics exec -T superset python /app/pythonpath/bootstrap_assets.py
+  docker compose exec -T superset python /app/pythonpath/bootstrap_assets.py
 }
 
 bootstrap_airflow() {
   log "Bootstrapping Airflow admin user and DAG state"
-  docker compose --profile orchestration exec -T airflow airflow users reset-password -u admin -p password >/dev/null 2>&1 || true
-  docker compose --profile orchestration exec -T airflow airflow dags unpause agent_network_partner_ingestion
+  docker compose exec -T airflow airflow users reset-password -u admin -p password >/dev/null 2>&1 || true
+  docker compose exec -T airflow airflow dags unpause agent_network_partner_ingestion
 }
 
 refresh_partner_reporting_loop() {
@@ -67,8 +67,8 @@ refresh_partner_reporting_loop() {
     log "Running partner feed simulation, dbt build, Superset asset refresh, and Airflow DAG trigger"
     docker compose exec -T api python -m backend.app.scripts.simulate_partner_e2e
     docker compose --profile analytics run --rm dbt build
-    docker compose --profile analytics exec -T superset python /app/pythonpath/bootstrap_assets.py
-    docker compose --profile orchestration exec -T airflow airflow dags trigger agent_network_partner_ingestion >/dev/null
+    docker compose exec -T superset python /app/pythonpath/bootstrap_assets.py
+    docker compose exec -T airflow airflow dags trigger agent_network_partner_ingestion >/dev/null
     remaining=$(( deadline - $(date +%s) ))
     if (( remaining <= 0 )); then
       break
@@ -83,8 +83,8 @@ refresh_partner_reporting_loop() {
 
 require_file ".env"
 
-log "Starting full stack with analytics and orchestration profiles"
-docker compose --profile analytics --profile orchestration up -d --build
+log "Starting full stack"
+docker compose up -d --build
 
 wait_for_api
 
@@ -121,10 +121,10 @@ wait "${PARTNER_PID}" || true
 
 log "Final dbt build and Superset dashboard refresh"
 docker compose --profile analytics run --rm dbt build
-docker compose --profile analytics exec -T superset python /app/pythonpath/bootstrap_assets.py
+docker compose exec -T superset python /app/pythonpath/bootstrap_assets.py
 
 log "Recent Airflow runs"
-docker compose --profile orchestration exec -T airflow airflow dags list-runs -d agent_network_partner_ingestion | tail -n 8
+docker compose exec -T airflow airflow dags list-runs -d agent_network_partner_ingestion | tail -n 8
 
 log "Demo complete"
 log "Frontend: http://127.0.0.1:5173"

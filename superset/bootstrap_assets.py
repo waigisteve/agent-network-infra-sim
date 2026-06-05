@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 
 from superset import db
 from superset.app import create_app
@@ -69,11 +70,16 @@ def ensure_dataset(database: Database, schema: str, table_name: str) -> SqlaTabl
         db.session.add(dataset)
         db.session.flush()
     dataset.fetch_metadata()
+    dataset.description = f"Refreshed from dbt mart metadata at {refresh_timestamp()}."
     db.session.flush()
     return dataset
 
 
-def ensure_chart(title: str, viz_type: str, dataset: SqlaTable) -> Slice:
+def refresh_timestamp() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def ensure_chart(title: str, viz_type: str, dataset: SqlaTable, refreshed_at: str) -> Slice:
     chart = db.session.query(Slice).filter_by(slice_name=title).one_or_none()
     params = chart_params(viz_type, dataset)
     if chart is None:
@@ -90,6 +96,7 @@ def ensure_chart(title: str, viz_type: str, dataset: SqlaTable) -> Slice:
         chart.datasource_id = dataset.id
         chart.datasource_type = "table"
         chart.params = json.dumps(params)
+    chart.description = f"Refreshed by local bootstrap at {refreshed_at}."
     db.session.flush()
     return chart
 
@@ -119,26 +126,28 @@ def is_numeric(column: TableColumn) -> bool:
     return any(token in type_text for token in ("int", "numeric", "double", "float", "decimal"))
 
 
-def ensure_dashboard(title: str, slug: str, charts: list[Slice]) -> Dashboard:
+def ensure_dashboard(title: str, slug: str, charts: list[Slice], refreshed_at: str) -> Dashboard:
     dashboard = db.session.query(Dashboard).filter_by(slug=slug).one_or_none()
     if dashboard is None:
         dashboard = Dashboard(dashboard_title=title, slug=slug, published=True)
         db.session.add(dashboard)
     dashboard.slices = charts
     dashboard.position_json = json.dumps({})
+    dashboard.json_metadata = json.dumps({"last_bootstrap_refresh_utc": refreshed_at})
     db.session.flush()
     return dashboard
 
 
 def main() -> None:
+    refreshed_at = refresh_timestamp()
     database = get_database()
     datasets = {key: ensure_dataset(database, *key) for key in DATASETS}
     for spec in DASHBOARDS:
         dataset = datasets[spec["dataset"]]
-        charts = [ensure_chart(title, viz_type, dataset) for title, viz_type in spec["charts"]]
-        ensure_dashboard(str(spec["title"]), str(spec["slug"]), charts)
+        charts = [ensure_chart(title, viz_type, dataset, refreshed_at) for title, viz_type in spec["charts"]]
+        ensure_dashboard(str(spec["title"]), str(spec["slug"]), charts, refreshed_at)
     db.session.commit()
-    print("Superset datasets, charts, and dashboards created")
+    print(f"Superset datasets, charts, and dashboards refreshed at {refreshed_at}")
 
 
 if __name__ == "__main__":

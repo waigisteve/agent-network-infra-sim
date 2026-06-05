@@ -1,9 +1,9 @@
 # Superset Local BI
 
-Superset is configured as an optional Compose profile:
+Superset starts with the default Compose stack:
 
 ```bash
-docker compose --profile analytics up -d superset
+docker compose up -d superset
 ```
 
 Open:
@@ -17,14 +17,14 @@ http://127.0.0.1:18088
 Create an admin user inside the container:
 
 ```bash
-docker compose --profile analytics exec superset superset fab create-admin \
+docker compose exec superset superset fab create-admin \
   --username admin \
   --firstname Data \
   --lastname Admin \
   --email admin@example.com \
   --password password
-docker compose --profile analytics exec superset superset db upgrade
-docker compose --profile analytics exec superset superset init
+docker compose exec superset superset db upgrade
+docker compose exec superset superset init
 ```
 
 ## Database Connection
@@ -47,8 +47,13 @@ Recommended datasets after dbt runs:
 Bootstrap starter datasets, charts, and dashboards:
 
 ```bash
-docker compose --profile analytics exec superset python /app/pythonpath/bootstrap_assets.py
+docker compose exec superset python /app/pythonpath/bootstrap_assets.py
 ```
+
+The bootstrap refreshes Superset datasets, chart definitions, and dashboard
+metadata. Superset's list-page "Modified" timestamp refers to this metadata
+refresh time, while the actual dashboard data freshness comes from the latest
+dbt mart build and source table timestamps.
 
 ## Partner-Facing RLS
 
